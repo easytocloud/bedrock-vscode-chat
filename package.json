@@ -6,8 +6,12 @@
   "publisher": "easytocloud",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bedrock/bedrock-vscode-chat"
+    "url": "https://github.com/easytocloud/bedrock-vscode-chat.git"
   },
+  "bugs": {
+    "url": "https://github.com/easytocloud/bedrock-vscode-chat/issues"
+  },
+  "homepage": "https://github.com/easytocloud/bedrock-vscode-chat#readme",
   "engines": {
     "vscode": "^1.104.0"
   },
