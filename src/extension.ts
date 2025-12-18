@@ -16,8 +16,9 @@ export function activate(context: vscode.ExtensionContext) {
 	// Build User-Agent string
 	const extVersion = (context.extension.packageJSON as { version?: string } | undefined)?.version ?? "unknown";
 	const vscodeVersion = vscode.version;
-	const userAgent = `bedrock-vscode-chat/${extVersion} VSCode/${vscodeVersion}`;
-	output.appendLine(`Version: ${extVersion} | VS Code: ${vscodeVersion}`);
+	const extensionId = context.extension.id;
+	const userAgent = `${extensionId}/${extVersion} VSCode/${vscodeVersion}`;
+	output.appendLine(`Extension: ${extensionId} | Version: ${extVersion} | VS Code: ${vscodeVersion}`);
 
 	console.log(`Extension version: ${extVersion}, VSCode version: ${vscodeVersion}`);
 

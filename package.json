@@ -1,5 +1,5 @@
 {
-  "name": "bedrock-vscode-chat",
+  "name": "bedrock-mantle-vscode-chat",
   "displayName": "AWS Bedrock Chat Provider",
   "description": "Use AWS Bedrock models via Mantle in VS Code chat",
   "version": "0.1.0",
