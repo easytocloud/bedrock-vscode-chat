@@ -8,8 +8,5 @@ tsconfig.json
 # Internal notes
 PLAN.md
 
-# Never ship dependencies
-node_modules/**
-
 # (optional) If you don't want source maps published, uncomment:
 # out/**/*.map

@@ -238,7 +238,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 		options: { silent: boolean },
 		token: vscode.CancellationToken
 	): Promise<vscode.LanguageModelChatInformation[]> {
-		console.log(`provideLanguageModelChatInformation called, silent: ${options.silent}`);
+		this.logDebug(`provideLanguageModelChatInformation called, silent: ${options.silent}`);
 
 		const region = this.config.get<string>("region", "us-east-1");
 		const showAllModels = this.config.get<boolean>("showAllModels", true);
@@ -252,7 +252,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 			if (apiKey) {
 				const baseUrl = buildEndpointUrl(region);
 				try {
-					console.log(`Fetching Mantle models from ${baseUrl}/models`);
+					this.logDebug(`Fetching Mantle models from ${baseUrl}/models`);
 					const abortController = new AbortController();
 					const cancellation = token.onCancellationRequested(() => abortController.abort());
 					const response = await fetch(`${baseUrl}/models`, {
@@ -297,14 +297,14 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 					}
 				}
 			} else {
-				console.log("Mantle enabled but no API key available");
+				this.logDebug("Mantle enabled but no API key available");
 			}
 		}
 
 		// 2) Native Bedrock models (Converse)
 		if (this.isNativeEnabled()) {
 			try {
-				console.log(`Listing native Bedrock models in ${region} (profile=${this.awsProfile() ?? "default"})`);
+				this.logDebug(`Listing native Bedrock models in ${region} (profile=${this.awsProfile() ?? "default"})`);
 				const nativeModels = await listNativeBedrockModels({
 					region,
 					awsProfile: this.awsProfile(),
@@ -362,7 +362,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 
 		this._models = modelsToReturn;
 		const models = this._models.map((m) => this.toLanguageModelChatInformation(m));
-		console.log(`Returning ${models.length} total models (mantle+native) to VSCode`);
+		this.logAlways(`Returning ${models.length} total models (mantle+native) to VSCode`);
 		return models;
 	}
 
@@ -780,7 +780,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 				emittedAny = true;
 			} catch (error) {
 				this.logAlways(`Failed to parse SSE chunk (first 500 chars): ${data.slice(0, 500)}`);
-				console.error("Failed to parse SSE chunk:", error);
+				this.logAlways(`Parse error: ${error instanceof Error ? error.message : String(error)}`);
 			}
 
 			return false;

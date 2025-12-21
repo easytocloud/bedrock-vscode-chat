@@ -6,25 +6,22 @@
 import * as vscode from "vscode";
 import { BedrockMantleProvider } from "./provider";
 
-function registerCommandSafe(
-	context: vscode.ExtensionContext,
-	commandId: string,
-	handler: (...args: any[]) => any
-): void {
-	try {
-		context.subscriptions.push(vscode.commands.registerCommand(commandId, handler));
-	} catch (e) {
-		// VS Code throws if a command ID is already registered (often due to multiple installs/dev hosts).
-		// Don't fail activation; just skip and rely on the existing registration.
-		console.warn(`Command '${commandId}' already exists; skipping registration.`, e);
-	}
-}
-
 export function activate(context: vscode.ExtensionContext) {
-	console.log("AWS Bedrock extension is activating...");
-
 	const output = vscode.window.createOutputChannel("AWS Bedrock");
 	context.subscriptions.push(output);
+	
+	const registerCommandSafe = (commandId: string, handler: (...args: any[]) => any): void => {
+		try {
+			context.subscriptions.push(vscode.commands.registerCommand(commandId, handler));
+		} catch (e) {
+			// VS Code throws if a command ID is already registered (often due to multiple installs/dev hosts).
+			// Don't fail activation; just skip and rely on the existing registration.
+			const msg = `Command '${commandId}' already exists; skipping registration.`;
+			output.appendLine(`WARNING: ${msg}`);
+		}
+	};
+	
+	output.appendLine("AWS Bedrock extension is activating...");
 	output.appendLine(`AWS Bedrock activated at ${new Date().toISOString()}`);
 	
 	// Build User-Agent string
@@ -33,34 +30,35 @@ export function activate(context: vscode.ExtensionContext) {
 	const userAgent = `bedrock-vscode-chat/${extVersion} VSCode/${vscodeVersion}`;
 	output.appendLine(`Version: ${extVersion} | VS Code: ${vscodeVersion}`);
 
-	console.log(`Extension version: ${extVersion}, VSCode version: ${vscodeVersion}`);
-
 	// Get configuration
 	const config = vscode.workspace.getConfiguration("aws-bedrock");
 
 	// Create and register provider
 	const provider = new BedrockMantleProvider(context.secrets, config, userAgent, output, context.globalState);
-	console.log("Created BedrockMantleProvider");
+	output.appendLine("Created BedrockMantleProvider");
 
 	const providerDisposable = vscode.lm.registerLanguageModelChatProvider(
 		"easytocloud.bedrock-mantle-vscode-chat",
 		provider
 	);
 	
-	console.log("Registered aws-bedrock provider with VSCode");
+	output.appendLine("Registered aws-bedrock provider with VSCode");
 	
 	// Eagerly fetch models to populate the picker
 	provider.provideLanguageModelChatInformation({ silent: true }, new vscode.CancellationTokenSource().token).then(
 		models => {
-			console.log(`Successfully loaded ${models.length} Bedrock models`);
+			output.appendLine(`Successfully loaded ${models.length} Bedrock models`);
 			if (models.length === 0) {
-				console.log("No models returned - might need API key");
+				output.appendLine("No models returned - might need API key or check configuration");
 			} else {
-				console.log(`Models: ${models.map(m => m.name).join(", ")}`);
+				output.appendLine(`Models: ${models.map(m => m.name).join(", ")}`);
 			}
 		},
 		error => {
-			console.error("Failed to load Bedrock models:", error);
+			output.appendLine(`ERROR: Failed to load Bedrock models: ${error}`);
+			if (error instanceof Error) {
+				output.appendLine(`  ${error.stack || error.message}`);
+			}
 		}
 	);
 
@@ -173,14 +171,14 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	// Register commands with unique IDs
-	registerCommandSafe(context, "bedrock-mantle-vscode-chat.manage", manageHandler);
-	registerCommandSafe(context, "bedrock-mantle-vscode-chat.showLogs", showLogsHandler);
-	registerCommandSafe(context, "bedrock-mantle-vscode-chat.clearApiKey", clearApiKeyHandler);
+	registerCommandSafe("bedrock-mantle-vscode-chat.manage", manageHandler);
+	registerCommandSafe("bedrock-mantle-vscode-chat.showLogs", showLogsHandler);
+	registerCommandSafe("bedrock-mantle-vscode-chat.clearApiKey", clearApiKeyHandler);
 
 	// Best-effort legacy IDs (don't fail activation if they collide)
-	registerCommandSafe(context, "aws-bedrock.manage", manageHandler);
-	registerCommandSafe(context, "aws-bedrock.showLogs", showLogsHandler);
-	registerCommandSafe(context, "aws-bedrock.clearApiKey", clearApiKeyHandler);
+	registerCommandSafe("aws-bedrock.manage", manageHandler);
+	registerCommandSafe("aws-bedrock.showLogs", showLogsHandler);
+	registerCommandSafe("aws-bedrock.clearApiKey", clearApiKeyHandler);
 
 	// Add to subscriptions
 	context.subscriptions.push(providerDisposable);

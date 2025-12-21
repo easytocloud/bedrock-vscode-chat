@@ -1,6 +1,27 @@
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sunburst effect from top -->
+  <defs>
+    <radialGradient id="bg3" cx="50%" cy="0%" r="100%">
+      <stop offset="0%" style="stop-color:#FDB44B;stop-opacity:0.3" />
+      <stop offset="30%" style="stop-color:#5DADE2;stop-opacity:0.8" />
+      <stop offset="70%" style="stop-color:#2E5F8C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1A3A52;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
   <!-- Background circle -->
-  <circle cx="64" cy="64" r="60" fill="#232F3E" opacity="0.95"/>
+  <circle cx="64" cy="64" r="60" fill="url(#bg3)"/>
+  
+  <!-- Subtle sun rays -->
+  <g opacity="0.15">
+    <path d="M 64 10 L 70 50 L 64 50 Z" fill="#FFD700"/>
+    <path d="M 64 10 L 58 50 L 64 50 Z" fill="#FFD700"/>
+    <path d="M 80 20 L 75 50 L 70 48 Z" fill="#FFD700"/>
+    <path d="M 48 20 L 53 50 L 58 48 Z" fill="#FFD700"/>
+  </g>
+  
+  <!-- Subtle horizon glow -->
+  <ellipse cx="64" cy="85" rx="50" ry="8" fill="#FFFFFF" opacity="0.1"/>
   
   <!-- AWS Bedrock foundation/rock shape (bottom) -->
   <path d="M 30 85 L 45 55 L 64 50 L 83 55 L 98 85 Z" fill="#FF9900" opacity="0.9"/>
