@@ -1,5 +1,12 @@
 # AWS Bedrock Chat Provider for VS Code
 
+[![Version](https://img.shields.io/visual-studio-marketplace/v/easytocloud.bedrock-mantle-vscode-chat?style=flat-square&label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=easytocloud.bedrock-mantle-vscode-chat)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/easytocloud.bedrock-mantle-vscode-chat?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=easytocloud.bedrock-mantle-vscode-chat)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/easytocloud.bedrock-mantle-vscode-chat?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=easytocloud.bedrock-mantle-vscode-chat)
+[![License](https://img.shields.io/github/license/easytocloud/bedrock-vscode-chat?style=flat-square)](https://github.com/easytocloud/bedrock-vscode-chat/blob/main/LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/easytocloud/bedrock-vscode-chat?style=flat-square&logo=github)](https://github.com/easytocloud/bedrock-vscode-chat)
+[![GitHub Issues](https://img.shields.io/github/issues/easytocloud/bedrock-vscode-chat?style=flat-square&logo=github)](https://github.com/easytocloud/bedrock-vscode-chat/issues)
+
 Use AWS Bedrock models directly in VS Code chat via:
 
 - **Mantle (OpenAI-compatible API)** for the OSS/openai-style model catalog
@@ -370,18 +377,23 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed d
 
 MIT License - See LICENSE file for details
 
+## Credits
+
+ - **Project Lead**: easytocloud
+- **Development Assistant**: GitHub Copilot
+
 ## Acknowledgments
 
 Inspired by the [HuggingFace VSCode Chat](https://github.com/huggingface/huggingface-vscode-chat) extension.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/easytocloud/bedrock-vscode-chat/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/easytocloud/bedrock-vscode-chat/discussions)
-- **AWS Bedrock**: [AWS Support](https://aws.amazon.com/support/)
+* **Issues**: [GitHub Issues](https://github.com/easytocloud/bedrock-vscode-chat/issues)
+* **Discussions**: [GitHub Discussions](https://github.com/easytocloud/bedrock-vscode-chat/discussions)
+* **AWS Bedrock**: [AWS Support](https://aws.amazon.com/support/)
 
 ---
 
-**Version**: 0.2.4  
-**Status**: Production  
+**Version**: 0.3.0  
+**Status**: Production
 **Last Updated**: December 18, 2025
