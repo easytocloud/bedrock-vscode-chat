@@ -2,7 +2,7 @@
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "AWS Bedrock Chat Provider",
   "description": "Use AWS Bedrock models in VS Code chat (Mantle + native Converse)",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "easytocloud",
   "repository": {
     "type": "git",
