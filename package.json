@@ -1,17 +1,13 @@
 {
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "AWS Bedrock Chat Provider",
-  "description": "Use AWS Bedrock models via Mantle in VS Code chat",
-  "version": "0.1.0",
+  "description": "Use AWS Bedrock models in VS Code chat (Mantle + native Converse)",
+  "version": "0.2.0",
   "publisher": "easytocloud",
   "repository": {
     "type": "git",
-    "url": "https://github.com/easytocloud/bedrock-vscode-chat.git"
+    "url": "https://github.com/easytocloud/bedrock-vscode-chat"
   },
-  "bugs": {
-    "url": "https://github.com/easytocloud/bedrock-vscode-chat/issues"
-  },
-  "homepage": "https://github.com/easytocloud/bedrock-vscode-chat#readme",
   "engines": {
     "vscode": "^1.104.0"
   },
@@ -27,7 +23,6 @@
     "copilot",
     "language-model"
   ],
-  "license": "MIT",
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -35,28 +30,43 @@
   "contributes": {
     "languageModelChatProviders": [
       {
-        "vendor": "aws-bedrock",
-        "displayName": "AWS Bedrock (Mantle)",
-        "managementCommand": "aws-bedrock.manage"
+        "vendor": "bedrock.bedrock-vscode-chat",
+        "displayName": "AWS Bedrock",
+        "managementCommand": "bedrock-vscode-chat.manage"
       }
     ],
     "commands": [
       {
-        "command": "aws-bedrock.manage",
-        "title": "Manage AWS Bedrock API Key"
+        "command": "bedrock-vscode-chat.manage",
+        "title": "Manage AWS Bedrock"
       },
       {
-        "command": "aws-bedrock.clearApiKey",
-        "title": "Clear AWS Bedrock API Key"
+        "command": "bedrock-vscode-chat.clearApiKey",
+        "title": "Clear AWS Bedrock API Key (Mantle)"
       },
       {
-        "command": "aws-bedrock.showLogs",
+        "command": "bedrock-vscode-chat.showLogs",
         "title": "Show AWS Bedrock Logs"
       }
     ],
     "configuration": {
       "title": "AWS Bedrock",
       "properties": {
+        "aws-bedrock.enableMantle": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Mantle (OpenAI-compatible) models"
+        },
+        "aws-bedrock.enableNative": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable native AWS Bedrock models via the Converse API (uses your AWS credentials, not the Mantle API key)"
+        },
+        "aws-bedrock.awsProfile": {
+          "type": "string",
+          "default": "",
+          "description": "Optional AWS named profile to use for native Bedrock (Converse). Leave empty to use the default AWS credential chain."
+        },
         "aws-bedrock.region": {
           "type": "string",
           "enum": [
@@ -88,7 +98,7 @@
             "South America (São Paulo)"
           ],
           "default": "us-east-1",
-          "description": "AWS region for Bedrock Mantle endpoint"
+          "description": "AWS region for Bedrock (Mantle and native)"
         },
         "aws-bedrock.showAllModels": {
           "type": "boolean",
@@ -98,7 +108,7 @@
         "aws-bedrock.debugLogging": {
           "type": "boolean",
           "default": false,
-          "description": "Enable verbose debug logging to the 'AWS Bedrock (Mantle)' Output Channel"
+          "description": "Enable verbose debug logging to the 'AWS Bedrock' Output Channel"
         },
         "aws-bedrock.sendTools": {
           "type": "boolean",
@@ -109,6 +119,26 @@
           "type": "boolean",
           "default": true,
           "description": "Emit placeholder text like 'Thinking…' or '(Waiting for model output…)' into chat while waiting"
+        },
+        "aws-bedrock.modelMetadataSource": {
+          "type": "string",
+          "enum": [
+            "litellm",
+            "none"
+          ],
+          "default": "litellm",
+          "description": "Where to source model capability + token limit metadata. 'litellm' uses a public registry; 'none' uses built-in heuristics + runtime probing only."
+        },
+        "aws-bedrock.modelMetadataUrl": {
+          "type": "string",
+          "default": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
+          "description": "URL for external model metadata (used when modelMetadataSource=litellm)"
+        },
+        "aws-bedrock.modelMetadataCacheHours": {
+          "type": "number",
+          "default": 24,
+          "minimum": 0,
+          "description": "How long to cache external model metadata (hours). 0 disables caching and always refetches."
         }
       }
     }
@@ -118,6 +148,12 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.879.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.879.0",
+    "@aws-sdk/credential-provider-ini": "^3.879.0",
+    "@aws-sdk/credential-provider-node": "^3.879.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.104.0",

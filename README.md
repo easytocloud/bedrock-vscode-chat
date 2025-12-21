@@ -1,14 +1,19 @@
 # AWS Bedrock Chat Provider for VS Code
 
-Use AWS Bedrock models directly in VS Code chat via Mantle's OpenAI-compatible API.
+Use AWS Bedrock models directly in VS Code chat via:
+
+- **Mantle (OpenAI-compatible API)** for the OSS/openai-style model catalog
+- **Native Bedrock (Converse API)** for the full Bedrock foundation model catalog
 
 ## Features
 
-- **26+ Models**: Access to OpenAI, Google, Mistral, Qwen, DeepSeek, Nvidia, and more
+- **Mantle + Native**: Use Mantle models and native Bedrock foundation models
+- **Dynamic Model Discovery**: Mantle models are fetched from Mantle's Models API; native models are listed from AWS Bedrock
 - **Streaming Responses**: Real-time chat with streaming support
 - **Tool Calling**: Function calling support for capable models
 - **Multi-Region**: Support for 12 AWS regions
-- **OpenAI Compatible**: Uses familiar OpenAI SDK patterns via Mantle
+- **OpenAI Compatible (Mantle)**: Uses familiar OpenAI SDK patterns via Mantle
+- **Converse API (Native)**: Uses the unified Bedrock conversation API
 
 ## Available Models
 
@@ -43,8 +48,11 @@ Use AWS Bedrock models directly in VS Code chat via Mantle's OpenAI-compatible A
 
 ## Prerequisites
 
-1. **AWS Bedrock API Key**: Obtain from the [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/)
-2. **VS Code**: Version 1.104.0 or later
+You can use either backend (or both):
+
+1. **Mantle (optional)**: An **AWS Bedrock API Key** from the [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/)
+2. **Native Bedrock (optional)**: **AWS credentials** available to VS Code (env vars, `~/.aws/credentials`, SSO, etc). You can also set `aws-bedrock.awsProfile`.
+3. **VS Code**: Version 1.104.0 or later
 
 ## Installation
 
@@ -76,11 +84,11 @@ code --install-extension bedrock-vscode-chat-0.1.0.vsix
 
 ## Setup
 
-### 1. Configure API Key
+### 1. Configure Mantle API Key (Optional)
 
 **Method 1: Via Command Palette**
 1. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-2. Run: `Manage AWS Bedrock API Key`
+2. Run: `Manage AWS Bedrock`
 3. Select "Enter API Key"
 4. Paste your API key from AWS Bedrock Console
 
@@ -88,12 +96,20 @@ code --install-extension bedrock-vscode-chat-0.1.0.vsix
 - The extension will prompt for your API key when you first try to use a model
 - Your key is stored securely in VS Code's SecretStorage
 
-### 2. Select Region (Optional)
+### 2. Configure Native AWS Profile (Optional)
+
+If you're using native Bedrock models and want a specific named profile:
+
+1. Run: `Manage AWS Bedrock`
+2. Select "Set AWS Profile (Native)"
+3. Enter a profile name (or leave blank to use the default credential chain)
+
+### 3. Select Region (Optional)
 
 Default region is `us-east-1`. To change:
 
 1. Open Command Palette
-2. Run: `Manage AWS Bedrock API Key`
+2. Run: `Manage AWS Bedrock`
 3. Select "Change Region"
 4. Choose your preferred AWS region
 
@@ -165,7 +181,7 @@ Assistant (via Bedrock): [Streams response in real-time...]
 
 | Command | Description |
 |---------|-------------|
-| `Manage AWS Bedrock API Key` | Configure API key, region, and settings |
+| `Manage AWS Bedrock` | Configure Mantle API key, native AWS profile, region, and settings |
 | `Clear AWS Bedrock API Key` | Remove stored API key |
 
 ## Architecture
@@ -200,7 +216,15 @@ Models with function calling capabilities:
 ### Vision Support
 
 Models with multimodal (image) input:
-- `qwen3-vl-235b-a22b-instruct`
+
+- Mantle models: based on model naming and API behavior
+- Native Bedrock models: based on Bedrock's reported input modalities
+
+### Notes on Capability Metadata
+
+- **Token limits + initial capabilities**: The extension can optionally use an external model metadata registry (default: Litellm's public JSON) to populate `maxInputTokens`, `maxOutputTokens`, and initial tool/vision flags. Configure via `aws-bedrock.modelMetadataSource`, `aws-bedrock.modelMetadataUrl`, and `aws-bedrock.modelMetadataCacheHours`.
+- **Native Bedrock models**: vision is derived from `ListFoundationModels` input modalities (reliable). Tool support is still verified on-demand by attempting a tool-enabled request and caching whether the model accepts tool config (this overrides external metadata if the runtime behavior differs).
+- **Mantle models**: Mantle's `/v1/models` does not include tool/vision/token metadata, so the extension uses external metadata when enabled, plus runtime probing (tools) as a safety net.
 
 ### Code Specialization
 
@@ -221,7 +245,7 @@ Models with enhanced reasoning:
 
 **Solution**:
 1. Verify your API key in AWS Bedrock Console
-2. Run: `Manage AWS Bedrock API Key` → "Clear API Key"
+2. Run: `Manage AWS Bedrock` → "Clear API Key (Mantle)"
 3. Re-enter your API key
 
 ### Model Not Available

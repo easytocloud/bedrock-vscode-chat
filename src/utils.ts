@@ -7,6 +7,7 @@ import * as vscode from "vscode";
 import type {
 	OpenAIChatMessage,
 	OpenAIChatRole,
+	OpenAIMessageContentPart,
 	OpenAITool,
 	OpenAIToolCall,
 	ModelCapabilities,
@@ -23,13 +24,42 @@ export function convertMessages(
 
 	for (const msg of messages) {
 		const role = mapRole(msg.role);
-		const content: string[] = [];
+		const contentText: string[] = [];
+		const contentParts: OpenAIMessageContentPart[] = [];
+		let usedMultipart = false;
 		const toolCalls: OpenAIToolCall[] = [];
 		let toolCallId: string | undefined;
 
 		for (const part of msg.content) {
 			if (part instanceof vscode.LanguageModelTextPart) {
-				content.push(part.value);
+				if (usedMultipart) {
+					contentParts.push({ type: "text", text: part.value });
+				} else {
+					contentText.push(part.value);
+				}
+			} else if (part instanceof vscode.LanguageModelDataPart) {
+				const mime = part.mimeType ?? "";
+				if (mime.toLowerCase().startsWith("image/")) {
+					// Switch to multipart content.
+					if (!usedMultipart) {
+						usedMultipart = true;
+						if (contentText.length) {
+							contentParts.push({ type: "text", text: contentText.join("\n") });
+							contentText.length = 0;
+						}
+					}
+					const b64 = Buffer.from(part.data).toString("base64");
+					const url = `data:${mime};base64,${b64}`;
+					contentParts.push({ type: "image_url", image_url: { url } });
+				} else {
+					// Best-effort: treat other data as UTF-8 text.
+					const asText = Buffer.from(part.data).toString("utf8");
+					if (usedMultipart) {
+						contentParts.push({ type: "text", text: asText });
+					} else {
+						contentText.push(asText);
+					}
+				}
 			} else if (part instanceof vscode.LanguageModelToolCallPart) {
 				toolCalls.push({
 					id: part.callId,
@@ -54,10 +84,15 @@ export function convertMessages(
 		}
 
 		// Only add message if it has content or tool calls
-		if (content.length > 0 || toolCalls.length > 0) {
+		const hasContent = usedMultipart ? contentParts.length > 0 : contentText.length > 0;
+		if (hasContent || toolCalls.length > 0) {
 			const message: OpenAIChatMessage = {
 				role,
-				content: content.length > 0 ? content.join("\n") : null,
+				content: usedMultipart
+					? contentParts
+					: contentText.length > 0
+						? contentText.join("\n")
+						: null,
 			};
 			if (toolCalls.length > 0) {
 				message.tool_calls = toolCalls;
@@ -202,6 +237,7 @@ export function inferModelCapabilities(modelId: string): ModelCapabilities {
  * Parse model ID into components and create display name
  */
 export function parseModelInfo(modelId: string): ParsedModelInfo {
+	const rawModelId = modelId;
 	const parts = modelId.split(".");
 	const provider = parts[0] || "unknown";
 	const modelName = parts.slice(1).join(".") || modelId;
@@ -225,7 +261,9 @@ export function parseModelInfo(modelId: string): ParsedModelInfo {
 	}
 
 	return {
-		id: modelId,
+		id: `mantle:${rawModelId}`,
+		modelId: rawModelId,
+		backend: "mantle",
 		provider,
 		modelName,
 		displayName,

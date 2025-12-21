@@ -6,19 +6,32 @@
 import * as vscode from "vscode";
 import { BedrockMantleProvider } from "./provider";
 
+function registerCommandSafe(
+	context: vscode.ExtensionContext,
+	commandId: string,
+	handler: (...args: any[]) => any
+): void {
+	try {
+		context.subscriptions.push(vscode.commands.registerCommand(commandId, handler));
+	} catch (e) {
+		// VS Code throws if a command ID is already registered (often due to multiple installs/dev hosts).
+		// Don't fail activation; just skip and rely on the existing registration.
+		console.warn(`Command '${commandId}' already exists; skipping registration.`, e);
+	}
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	console.log("AWS Bedrock extension is activating...");
 
-	const output = vscode.window.createOutputChannel("AWS Bedrock (Mantle)");
+	const output = vscode.window.createOutputChannel("AWS Bedrock");
 	context.subscriptions.push(output);
-	output.appendLine(`AWS Bedrock (Mantle) activated at ${new Date().toISOString()}`);
+	output.appendLine(`AWS Bedrock activated at ${new Date().toISOString()}`);
 	
 	// Build User-Agent string
 	const extVersion = (context.extension.packageJSON as { version?: string } | undefined)?.version ?? "unknown";
 	const vscodeVersion = vscode.version;
-	const extensionId = context.extension.id;
-	const userAgent = `${extensionId}/${extVersion} VSCode/${vscodeVersion}`;
-	output.appendLine(`Extension: ${extensionId} | Version: ${extVersion} | VS Code: ${vscodeVersion}`);
+	const userAgent = `bedrock-vscode-chat/${extVersion} VSCode/${vscodeVersion}`;
+	output.appendLine(`Version: ${extVersion} | VS Code: ${vscodeVersion}`);
 
 	console.log(`Extension version: ${extVersion}, VSCode version: ${vscodeVersion}`);
 
@@ -26,11 +39,11 @@ export function activate(context: vscode.ExtensionContext) {
 	const config = vscode.workspace.getConfiguration("aws-bedrock");
 
 	// Create and register provider
-	const provider = new BedrockMantleProvider(context.secrets, config, userAgent, output);
+	const provider = new BedrockMantleProvider(context.secrets, config, userAgent, output, context.globalState);
 	console.log("Created BedrockMantleProvider");
 
 	const providerDisposable = vscode.lm.registerLanguageModelChatProvider(
-		"aws-bedrock",
+		"bedrock.bedrock-vscode-chat",
 		provider
 	);
 	
@@ -52,11 +65,12 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	// Register management command for API key configuration
-	const manageCommand = vscode.commands.registerCommand("aws-bedrock.manage", async () => {
+	const manageHandler = async () => {
 		const action = await vscode.window.showQuickPick(
 			[
-				{ label: "Enter API Key", action: "enter" },
-				{ label: "Clear API Key", action: "clear" },
+				{ label: "Enter API Key (Mantle)", action: "enter" },
+				{ label: "Clear API Key (Mantle)", action: "clear" },
+				{ label: "Set AWS Profile (Native)", action: "profile" },
 				{ label: "Change Region", action: "region" },
 				{ label: "Show Logs", action: "logs" },
 			],
@@ -89,6 +103,27 @@ export function activate(context: vscode.ExtensionContext) {
 
 			case "clear": {
 				await provider.clearApiKey();
+				break;
+			}
+
+			case "profile": {
+				const current = config.get<string>("awsProfile", "");
+				const entered = await vscode.window.showInputBox({
+					title: "AWS Profile (Native Bedrock)",
+					prompt: "Optional AWS named profile to use for native Bedrock (Converse). Leave empty to use default credentials.",
+					ignoreFocusOut: true,
+					value: current,
+					placeHolder: "e.g. default, my-sso-profile (leave blank for default chain)",
+				});
+
+				if (typeof entered === "string") {
+					await config.update("awsProfile", entered.trim(), vscode.ConfigurationTarget.Global);
+					vscode.window.showInformationMessage(
+						entered.trim()
+							? `AWS profile set to '${entered.trim()}'`
+							: "AWS profile cleared (using default credentials)"
+					);
+				}
 				break;
 			}
 
@@ -126,19 +161,29 @@ export function activate(context: vscode.ExtensionContext) {
 				break;
 			}
 		}
-	});
+	};
 
-	const showLogsCommand = vscode.commands.registerCommand("aws-bedrock.showLogs", async () => {
+	const showLogsHandler = async () => {
 		output.show(true);
-	});
+	};
 
 	// Register clear API key command
-	const clearCommand = vscode.commands.registerCommand("aws-bedrock.clearApiKey", async () => {
+	const clearApiKeyHandler = async () => {
 		await provider.clearApiKey();
-	});
+	};
+
+	// Register commands with unique IDs
+	registerCommandSafe(context, "bedrock-vscode-chat.manage", manageHandler);
+	registerCommandSafe(context, "bedrock-vscode-chat.showLogs", showLogsHandler);
+	registerCommandSafe(context, "bedrock-vscode-chat.clearApiKey", clearApiKeyHandler);
+
+	// Best-effort legacy IDs (don't fail activation if they collide)
+	registerCommandSafe(context, "aws-bedrock.manage", manageHandler);
+	registerCommandSafe(context, "aws-bedrock.showLogs", showLogsHandler);
+	registerCommandSafe(context, "aws-bedrock.clearApiKey", clearApiKeyHandler);
 
 	// Add to subscriptions
-	context.subscriptions.push(providerDisposable, manageCommand, clearCommand, showLogsCommand);
+	context.subscriptions.push(providerDisposable);
 
 	// Listen for configuration changes
 	context.subscriptions.push(

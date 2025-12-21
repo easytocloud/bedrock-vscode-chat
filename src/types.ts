@@ -7,6 +7,10 @@
  */
 export type OpenAIChatRole = "system" | "user" | "assistant" | "tool";
 
+export type OpenAIMessageContentPart =
+	| { type: "text"; text: string }
+	| { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } };
+
 /**
  * OpenAI tool call structure
  */
@@ -24,7 +28,7 @@ export interface OpenAIToolCall {
  */
 export interface OpenAIChatMessage {
 	role: OpenAIChatRole;
-	content?: string | null;
+	content?: string | OpenAIMessageContentPart[] | null;
 	name?: string;
 	tool_calls?: OpenAIToolCall[];
 	tool_call_id?: string;
@@ -155,15 +159,32 @@ export interface ModelCapabilities {
 	isThinking: boolean;
 }
 
+export type ModelBackend = "mantle" | "bedrock";
+
 /**
  * Parsed model information
  */
 export interface ParsedModelInfo {
+	/**
+	 * Unique ID exposed to VS Code. Must be unique across all backends.
+	 * Format: "mantle:<rawModelId>" | "bedrock:<rawModelId>".
+	 */
 	id: string;
+	/**
+	 * Underlying model identifier used when invoking the backend.
+	 * For Mantle: the OpenAI-compatible model name.
+	 * For native Bedrock: the Bedrock modelId (or an inference profile identifier when required).
+	 */
+	modelId: string;
+	backend: ModelBackend;
 	provider: string;
 	modelName: string;
 	displayName: string;
 	contextLength: number;
+	/**
+	 * Optional: maximum prompt/input tokens (more reliable than deriving from contextLength).
+	 */
+	maxInputTokens?: number;
 	maxOutputTokens: number;
 	capabilities: ModelCapabilities;
 }
