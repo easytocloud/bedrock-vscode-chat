@@ -183,6 +183,39 @@ Examples:
 **Decision**: Buffer-based incremental parsing  
 **Rationale**: Streaming tool calls arrive as JSON deltas, must accumulate before emitting
 
+### 6. Logging Strategy
+**Decision**: Use Output Channel instead of console.log  
+**Rationale**: console.log only works in Extension Development Host, not in installed extensions. Output Channel is visible to all users.
+
+### 7. Dependency Packaging
+**Decision**: Include node_modules in VSIX package  
+**Rationale**: AWS SDK dependencies are not available in VS Code runtime, must be bundled with extension.
+
+## Critical Implementation Notes
+
+### Publisher Name
+- **Must be lowercase**: `easytocloud` (not `EasyToCloud`)
+- Used in vendor ID: `easytocloud.bedrock-mantle-vscode-chat`
+
+### Testing Environments
+1. **Extension Development Host (F5)**:
+   - Uses local node_modules
+   - console.log works (appears in Debug Console)
+   - Hot reload with Cmd/Ctrl+R
+   - Best for active development
+
+2. **Installed Extension (VSIX)**:
+   - Uses bundled dependencies
+   - console.log goes nowhere (use Output Channel!)
+   - Must reload window after install
+   - Best for final testing
+
+### Icon Management
+- Source: `icon.svg` (128x128)
+- Output: `icon.png` (128x128)
+- Conversion: `rsvg-convert -w 128 -h 128 icon.svg -o icon.png`
+- Tool required: librsvg (`brew install librsvg` on macOS)
+
 ## Error Handling Strategy
 
 ### HTTP Errors

@@ -305,30 +305,46 @@ npm run lint
 ```
 bedrock-vscode-chat/
 ├── src/
-│   ├── extension.ts      # Extension entry point
-│   ├── provider.ts        # Main provider implementation
-│   ├── types.ts           # TypeScript type definitions
-│   └── utils.ts           # Utility functions
-├── package.json           # Extension manifest
-├── tsconfig.json          # TypeScript configuration
-└── README.md             # This file
+│   ├── extension.ts           # Extension entry point
+│   ├── provider.ts             # Main provider implementation
+│   ├── bedrockNative.ts        # Native Bedrock Converse API
+│   ├── externalModelMetadata.ts # External model metadata loader
+│   ├── types.ts                # TypeScript type definitions
+│   └── utils.ts                # Utility functions
+├── package.json                # Extension manifest
+├── tsconfig.json               # TypeScript configuration
+├── icon.svg                    # Source icon (editable)
+├── icon.png                    # Extension icon (128x128)
+├── README.md                   # This file
+├── CONTRIBUTING.md             # Development guide
+└── PLAN.md                     # Architecture details
 ```
 
 ## Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines.
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+**Quick start for contributors:**
+
+1. Fork and clone the repository
+2. Install dependencies: `npm install`
+3. Compile: `npm run compile`
+4. Press F5 to launch Extension Development Host
+5. See CONTRIBUTING.md for testing, logging, and publishing guidelines
+
+**Key development notes:**
+- Publisher name: `easytocloud` (lowercase)
+- Use Output Channel for logging, not console.log
+- Include node_modules in VSIX (required for AWS SDK)
+- Test in both F5 mode and installed VSIX
+- Use `rsvg-convert` for icon generation
 
 ## Resources
 
 - [AWS Bedrock Mantle Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html)
 - [VS Code Language Model API](https://code.visualstudio.com/api/references/vscode-api#lm)
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
+- [Contributing Guide](CONTRIBUTING.md) - Detailed development documentation
 
 ## License
 
@@ -340,12 +356,12 @@ Inspired by the [HuggingFace VSCode Chat](https://github.com/huggingface/hugging
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/bedrock/bedrock-vscode-chat/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/bedrock/bedrock-vscode-chat/discussions)
+- **Issues**: [GitHub Issues](https://github.com/easytocloud/bedrock-vscode-chat/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/easytocloud/bedrock-vscode-chat/discussions)
 - **AWS Bedrock**: [AWS Support](https://aws.amazon.com/support/)
 
 ---
 
-**Version**: 0.1.0  
-**Status**: Beta  
+**Version**: 0.2.4  
+**Status**: Production  
 **Last Updated**: December 18, 2025
