@@ -43,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log("Created BedrockMantleProvider");
 
 	const providerDisposable = vscode.lm.registerLanguageModelChatProvider(
-		"bedrock.bedrock-vscode-chat",
+		"easytocloud.bedrock-mantle-vscode-chat",
 		provider
 	);
 	

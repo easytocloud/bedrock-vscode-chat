@@ -1,9 +1,10 @@
 {
   "name": "bedrock-mantle-vscode-chat",
-  "displayName": "AWS Bedrock Chat Provider",
+  "displayName": "Bedrock LLMs for VS Code Chat",
   "description": "Use AWS Bedrock models in VS Code chat (Mantle + native Converse)",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "easytocloud",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/easytocloud/bedrock-vscode-chat"
@@ -30,7 +31,7 @@
   "contributes": {
     "languageModelChatProviders": [
       {
-        "vendor": "bedrock.bedrock-vscode-chat",
+        "vendor": "easytocloud.bedrock-mantle-vscode-chat",
         "displayName": "AWS Bedrock",
         "managementCommand": "bedrock-mantle-vscode-chat.manage"
       }
