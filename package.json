@@ -2,7 +2,7 @@
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "Bedrock LLMs for VS Code Chat",
   "description": "Use AWS Bedrock models in VS Code chat (Mantle + native Converse)",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "publisher": "easytocloud",
   "icon": "icon.png",
   "repository": {
@@ -62,6 +62,24 @@
           "type": "boolean",
           "default": true,
           "description": "Enable native AWS Bedrock models via the Converse API (uses your AWS credentials, not the Mantle API key)"
+        },
+        "aws-bedrock.mantleAuthMethod": {
+          "type": "string",
+          "enum": [
+            "apiKey",
+            "awsCredentials"
+          ],
+          "enumDescriptions": [
+            "Use API key from AWS Bedrock Console (simpler, no AWS CLI setup needed)",
+            "Use AWS credentials/profile (better for existing AWS setups)"
+          ],
+          "default": "apiKey",
+          "description": "Authentication method for Mantle models"
+        },
+        "aws-bedrock.mantleAwsProfile": {
+          "type": "string",
+          "default": "",
+          "description": "Optional AWS named profile to use for Mantle when using AWS credentials auth. Leave empty to use the default AWS credential chain."
         },
         "aws-bedrock.awsProfile": {
           "type": "string",
@@ -151,17 +169,19 @@
     "lint": "eslint src --ext ts"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
     "@aws-sdk/client-bedrock": "^3.879.0",
     "@aws-sdk/client-bedrock-runtime": "^3.879.0",
     "@aws-sdk/credential-provider-ini": "^3.879.0",
-    "@aws-sdk/credential-provider-node": "^3.879.0"
+    "@aws-sdk/credential-provider-node": "^3.879.0",
+    "@aws-sdk/signature-v4": "^3.370.0"
   },
   "devDependencies": {
-    "@types/vscode": "^1.104.0",
     "@types/node": "^20.x",
-    "typescript": "^5.6.0",
-    "eslint": "^9.15.0",
+    "@types/vscode": "^1.104.0",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
-    "@typescript-eslint/parser": "^8.15.0"
+    "@typescript-eslint/parser": "^8.15.0",
+    "eslint": "^9.15.0",
+    "typescript": "^5.6.0"
   }
 }

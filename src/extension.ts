@@ -66,8 +66,10 @@ export function activate(context: vscode.ExtensionContext) {
 	const manageHandler = async () => {
 		const action = await vscode.window.showQuickPick(
 			[
+				{ label: "Configure Mantle Authentication", action: "mantle-auth" },
 				{ label: "Enter API Key (Mantle)", action: "enter" },
 				{ label: "Clear API Key (Mantle)", action: "clear" },
+				{ label: "Set AWS Profile (Mantle)", action: "mantle-profile" },
 				{ label: "Set AWS Profile (Native)", action: "profile" },
 				{ label: "Change Region", action: "region" },
 				{ label: "Show Logs", action: "logs" },
@@ -83,10 +85,42 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		switch (action.action) {
+			case "mantle-auth": {
+				const currentMethod = config.get<string>("mantleAuthMethod", "apiKey");
+				const selected = await vscode.window.showQuickPick(
+					[
+						{ 
+							label: "API Key", 
+							description: "Use API key from AWS Bedrock Console",
+							detail: "Simpler, no AWS CLI setup needed",
+							value: "apiKey" 
+						},
+						{ 
+							label: "AWS Credentials", 
+							description: "Use AWS profile/credentials",
+							detail: "Better for existing AWS setups",
+							value: "awsCredentials" 
+						},
+					],
+					{
+						title: "Select Mantle Authentication Method",
+						placeHolder: `Current: ${currentMethod === "apiKey" ? "API Key" : "AWS Credentials"}`,
+					}
+				);
+
+				if (selected) {
+					await config.update("mantleAuthMethod", selected.value, vscode.ConfigurationTarget.Global);
+					vscode.window.showInformationMessage(
+						`Mantle authentication set to ${selected.label}`
+					);
+				}
+				break;
+			}
+
 			case "enter": {
 				const apiKey = await vscode.window.showInputBox({
-					title: "AWS Bedrock API Key",
-					prompt: "Enter your AWS Bedrock API key (from AWS Bedrock Console)",
+					title: "AWS Bedrock API Key (Mantle)",
+					prompt: "Enter your AWS Bedrock API key from AWS Bedrock Console",
 					ignoreFocusOut: true,
 					password: true,
 					placeHolder: "bedrock-api-key-...",
@@ -101,6 +135,27 @@ export function activate(context: vscode.ExtensionContext) {
 
 			case "clear": {
 				await provider.clearApiKey();
+				break;
+			}
+
+			case "mantle-profile": {
+				const current = config.get<string>("mantleAwsProfile", "");
+				const entered = await vscode.window.showInputBox({
+					title: "AWS Profile (Mantle)",
+					prompt: "Optional AWS named profile for Mantle when using AWS credentials auth. Leave empty for default.",
+					ignoreFocusOut: true,
+					value: current,
+					placeHolder: "e.g. default, my-sso-profile (leave blank for default chain)",
+				});
+
+				if (typeof entered === "string") {
+					await config.update("mantleAwsProfile", entered.trim(), vscode.ConfigurationTarget.Global);
+					vscode.window.showInformationMessage(
+						entered.trim()
+							? `Mantle AWS profile set to '${entered.trim()}'`
+							: "Mantle AWS profile cleared (using default credentials)"
+					);
+				}
 				break;
 			}
 

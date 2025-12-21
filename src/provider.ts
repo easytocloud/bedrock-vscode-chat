@@ -14,6 +14,7 @@ import type {
 } from "./types";
 import { converseOnce, listNativeBedrockModels } from "./bedrockNative";
 import { loadExternalMetadataForModels, type ExternalModelMetadata } from "./externalModelMetadata";
+import { signMantleRequest } from "./awsAuth";
 import {
 	buildEndpointUrl,
 	convertMessages,
@@ -139,6 +140,15 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 		return this.config.get<boolean>("enableNative", true);
 	}
 
+	private mantleAuthMethod(): "apiKey" | "awsCredentials" {
+		return this.config.get<string>("mantleAuthMethod", "apiKey") as "apiKey" | "awsCredentials";
+	}
+
+	private mantleAwsProfile(): string | undefined {
+		const profile = this.config.get<string>("mantleAwsProfile", "");
+		return profile?.trim() ? profile.trim() : undefined;
+	}
+
 	private awsProfile(): string | undefined {
 		const profile = this.config.get<string>("awsProfile", "");
 		return profile?.trim() ? profile.trim() : undefined;
@@ -247,28 +257,56 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 
 		// 1) Mantle models (OpenAI-compatible)
 		if (this.isMantleEnabled()) {
-			// Never prompt during discovery; prompt on first Mantle usage instead.
-			const apiKey = await this.ensureApiKey(true);
-			if (apiKey) {
-				const baseUrl = buildEndpointUrl(region);
-				try {
-					this.logDebug(`Fetching Mantle models from ${baseUrl}/models`);
-					const abortController = new AbortController();
-					const cancellation = token.onCancellationRequested(() => abortController.abort());
-					const response = await fetch(`${baseUrl}/models`, {
-						headers: {
+			const baseUrl = buildEndpointUrl(region);
+			const authMethod = this.mantleAuthMethod();
+			
+			try {
+				this.logDebug(`Fetching Mantle models from ${baseUrl}/models (auth: ${authMethod})`);
+				const abortController = new AbortController();
+				const cancellation = token.onCancellationRequested(() => abortController.abort());
+				
+				let headers: Record<string, string>;
+				
+				if (authMethod === "awsCredentials") {
+					// Use AWS SigV4 signing
+					const signed = await signMantleRequest(
+						`${baseUrl}/models`,
+						"GET",
+						undefined,
+						region,
+						this.mantleAwsProfile()
+					);
+					headers = {
+						...signed.headers,
+						"User-Agent": this.userAgent,
+					};
+				} else {
+					// Use API key (traditional method)
+					// Never prompt during discovery; prompt on first Mantle usage instead.
+					const apiKey = await this.ensureApiKey(true);
+					if (!apiKey) {
+						this.logDebug("Mantle enabled but no API key available");
+					} else {
+						headers = {
 							Authorization: `Bearer ${apiKey}`,
 							"User-Agent": this.userAgent,
-						},
+						};
+					}
+				}
+				
+				if (headers!) {
+					const response = await fetch(`${baseUrl}/models`, {
+						headers,
 						signal: abortController.signal,
 					});
 					cancellation.dispose();
 
 					if (!response.ok) {
+						const authDesc = authMethod === "awsCredentials" ? "AWS credentials" : "API key";
 						if (response.status === 401) {
 							if (!options.silent) {
 								vscode.window.showErrorMessage(
-									"Invalid AWS Bedrock API key (Mantle). Please update your API key."
+									`Invalid ${authDesc} for Mantle. Please check your configuration.`
 								);
 							}
 						} else if (!options.silent) {
@@ -291,13 +329,14 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 							});
 						merged.push(...mantleModels);
 					}
-				} catch (error) {
-					if (!options.silent && error instanceof Error) {
-						vscode.window.showErrorMessage(`Failed to fetch Mantle models: ${error.message}`);
-					}
 				}
-			} else {
-				this.logDebug("Mantle enabled but no API key available");
+			} catch (error) {
+				const authDesc = authMethod === "awsCredentials" ? "AWS credentials" : "API key";
+				const message = error instanceof Error ? error.message : String(error);
+				this.logAlways(`Failed to fetch Mantle models using ${authDesc}: ${message}`);
+				if (!options.silent) {
+					vscode.window.showErrorMessage(`Failed to fetch Mantle models: ${message}`);
+				}
 			}
 		}
 
@@ -509,11 +548,17 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 			}
 		}
 
-		// Get API key
-		const apiKey = await this.ensureApiKey(false);
-		if (!apiKey) {
-			throw new Error("AWS Bedrock API key is required");
+		// Get authentication method and credentials
+		const authMethod = this.mantleAuthMethod();
+		let apiKey: string | undefined;
+		
+		if (authMethod === "apiKey") {
+			apiKey = await this.ensureApiKey(false);
+			if (!apiKey) {
+				throw new Error("AWS Bedrock API key is required");
+			}
 		}
+		// For awsCredentials, we'll sign each request
 
 		// Validate request
 		const validation = validateRequest(messages);
@@ -572,16 +617,41 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 				...requestBody,
 				tools: toolsOverride,
 			};
-			return fetch(`${baseUrl}/chat/completions`, {
-				method: "POST",
-				headers: {
+			const bodyString = JSON.stringify(body);
+			
+			let headers: Record<string, string>;
+			
+			if (authMethod === "awsCredentials") {
+				// Sign request with AWS credentials
+				const signed = await signMantleRequest(
+					`${baseUrl}/chat/completions`,
+					"POST",
+					bodyString,
+					region,
+					this.mantleAwsProfile()
+				);
+				headers = {
+					...signed.headers,
+					"Content-Type": "application/json",
+					Accept: "text/event-stream",
+					"Cache-Control": "no-cache",
+					"User-Agent": this.userAgent,
+				};
+			} else {
+				// Use API key
+				headers = {
 					Authorization: `Bearer ${apiKey}`,
 					"Content-Type": "application/json",
 					Accept: "text/event-stream",
 					"Cache-Control": "no-cache",
 					"User-Agent": this.userAgent,
-				},
-				body: JSON.stringify(body),
+				};
+			}
+			
+			return fetch(`${baseUrl}/chat/completions`, {
+				method: "POST",
+				headers,
+				body: bodyString,
 				signal: abortController.signal,
 			});
 		};

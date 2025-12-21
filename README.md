@@ -50,17 +50,26 @@ Use AWS Bedrock models directly in VS Code chat via:
 
 You can use either backend (or both):
 
-1. **Mantle (optional)**: An **AWS Bedrock API Key** from the [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/)
+1. **Mantle (optional)**: 
+   - **Option A**: AWS Bedrock API Key from the [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/) (simpler)
+   - **Option B**: AWS credentials/profile (better for existing AWS setups)
 2. **Native Bedrock (optional)**: **AWS credentials** available to VS Code (env vars, `~/.aws/credentials`, SSO, etc). You can also set `aws-bedrock.awsProfile`.
 3. **VS Code**: Version 1.104.0 or later
 
 ## Installation
 
+### From VS Code Marketplace
+
+1. Open VS Code
+2. Go to Extensions (Cmd+Shift+X)
+3. Search for "Bedrock LLMs for VS Code Chat"
+4. Click Install
+
 ### From Source
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/bedrock/bedrock-vscode-chat.git
+   git clone https://github.com/easytocloud/bedrock-vscode-chat.git
    cd bedrock-vscode-chat
    ```
 
@@ -76,25 +85,33 @@ You can use either backend (or both):
 
 4. Press `F5` to open a new VS Code window with the extension loaded
 
-### From VSIX (Coming Soon)
-
-```bash
-code --install-extension bedrock-vscode-chat-0.1.0.vsix
-```
-
 ## Setup
 
-### 1. Configure Mantle API Key (Optional)
+### 1. Configure Mantle Authentication (Optional)
 
-**Method 1: Via Command Palette**
+Mantle supports two authentication methods:
+
+#### Option A: API Key (Simpler)
+
+**Via Command Palette:**
 1. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
 2. Run: `Manage AWS Bedrock`
-3. Select "Enter API Key"
+3. Select "Enter API Key (Mantle)"
 4. Paste your API key from AWS Bedrock Console
 
-**Method 2: On First Use**
-- The extension will prompt for your API key when you first try to use a model
+**On First Use:**
+- The extension will prompt for your API key when you first try to use a Mantle model
 - Your key is stored securely in VS Code's SecretStorage
+
+#### Option B: AWS Credentials (Better for existing AWS setups)
+
+1. Open Command Palette
+2. Run: `Manage AWS Bedrock`
+3. Select "Configure Mantle Authentication"
+4. Choose "AWS Credentials"
+5. Optionally set a specific profile via "Set AWS Profile (Mantle)"
+
+This method uses AWS Signature V4 authentication with your existing AWS credentials.
 
 ### 2. Configure Native AWS Profile (Optional)
 
@@ -116,11 +133,14 @@ Default region is `us-east-1`. To change:
 Or set in Settings:
 ```json
 {
-  "aws-bedrock.region": "us-west-2"
+  "aws-bedrock.region": "us-west-2",
+  "aws-bedrock.mantleAuthMethod": "awsCredentials",  // or "apiKey"
+  "aws-bedrock.mantleAwsProfile": "my-profile",      // optional
+  "aws-bedrock.awsProfile": "my-profile"             // for native Bedrock
 }
 ```
 
-### 3. Configure Model Visibility (Optional)
+### 4. Configure Model Visibility (Optional)
 
 Show/hide specialized models (like safeguard variants):
 
