@@ -32,20 +32,20 @@
       {
         "vendor": "bedrock.bedrock-vscode-chat",
         "displayName": "AWS Bedrock",
-        "managementCommand": "bedrock-vscode-chat.manage"
+        "managementCommand": "bedrock-mantle-vscode-chat.manage"
       }
     ],
     "commands": [
       {
-        "command": "bedrock-vscode-chat.manage",
+        "command": "bedrock-mantle-vscode-chat.manage",
         "title": "Manage AWS Bedrock"
       },
       {
-        "command": "bedrock-vscode-chat.clearApiKey",
+        "command": "bedrock-mantle-vscode-chat.clearApiKey",
         "title": "Clear AWS Bedrock API Key (Mantle)"
       },
       {
-        "command": "bedrock-vscode-chat.showLogs",
+        "command": "bedrock-mantle-vscode-chat.showLogs",
         "title": "Show AWS Bedrock Logs"
       }
     ],

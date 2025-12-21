@@ -173,9 +173,9 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	// Register commands with unique IDs
-	registerCommandSafe(context, "bedrock-vscode-chat.manage", manageHandler);
-	registerCommandSafe(context, "bedrock-vscode-chat.showLogs", showLogsHandler);
-	registerCommandSafe(context, "bedrock-vscode-chat.clearApiKey", clearApiKeyHandler);
+	registerCommandSafe(context, "bedrock-mantle-vscode-chat.manage", manageHandler);
+	registerCommandSafe(context, "bedrock-mantle-vscode-chat.showLogs", showLogsHandler);
+	registerCommandSafe(context, "bedrock-mantle-vscode-chat.clearApiKey", clearApiKeyHandler);
 
 	// Best-effort legacy IDs (don't fail activation if they collide)
 	registerCommandSafe(context, "aws-bedrock.manage", manageHandler);
