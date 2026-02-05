@@ -145,12 +145,16 @@ export function validateRequest(
 	messages: readonly vscode.LanguageModelChatRequestMessage[]
 ): { valid: boolean; error?: string } {
 	const pendingToolCalls = new Set<string>();
+	let hasToolUse = false;
+	let hasToolResult = false;
 
 	for (const msg of messages) {
 		for (const part of msg.content) {
 			if (part instanceof vscode.LanguageModelToolCallPart) {
 				pendingToolCalls.add(part.callId);
+				hasToolUse = true;
 			} else if (part instanceof vscode.LanguageModelToolResultPart) {
+				hasToolResult = true;
 				if (!pendingToolCalls.has(part.callId)) {
 					return {
 						valid: false,
@@ -163,12 +167,17 @@ export function validateRequest(
 	}
 
 	if (pendingToolCalls.size > 0) {
+		const missingIds = Array.from(pendingToolCalls).join(", ");
 		return {
 			valid: false,
-			error: `Missing tool results for calls: ${Array.from(pendingToolCalls).join(", ")}`,
+			error: `Missing tool results for calls: ${missingIds}`,
 		};
 	}
 
+	// NOTE: This only validates that calls have matching results in the message sequence.
+	// The Bedrock API has additional constraints: if message history contains tool blocks,
+	// they must be properly structured within the message context. The bedrockNative.ts
+	// converter now ensures this by preserving tool blocks if they exist in history.
 	return { valid: true };
 }
 

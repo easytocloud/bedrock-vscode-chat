@@ -5,6 +5,17 @@ All notable changes to the AWS Bedrock VSCode Chat extension will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-02-05
+
+### Fixed
+- **Multi-turn Conversation Tool Result Preservation**: Fixed critical bug causing "Expected toolResult blocks" validation errors after ~10-43 conversation turns with tool use
+  - Added `hasToolHistory()` function to detect tool blocks in message history
+  - Modified tool preservation logic to check both current request AND message history
+  - Tool result blocks are now preserved regardless of whether current request includes tools
+  - Prevents orphaned tool call blocks that caused Bedrock API validation failures
+  - Added debug logging for tool preservation decisions
+  - Enhanced `validateRequest()` with better error tracking
+
 ## [0.3.2] - 2026-02-05
 
 ### Fixed
@@ -126,6 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Show AWS Bedrock Logs`: Open output channel
 - `Clear AWS Bedrock API Key`: Remove stored API key
 
+[0.3.3]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.2.4...v0.3.0
