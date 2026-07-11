@@ -30,11 +30,14 @@ import {
 	buildEndpointUrl,
 	convertMessages,
 	convertTools,
+	createRequestTimeoutGuard,
 	disambiguateDisplayNames,
 	generateCallId,
 	parseModelInfo,
+	shouldLog,
 	tryParseJSONObject,
 	validateRequest,
+	type LogLevel,
 } from "./utils";
 
 export class MantleProvider implements vscode.LanguageModelChatProvider {
@@ -127,8 +130,8 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		}
 	}
 
-	private isDebugEnabled(): boolean {
-		return this.config.get<boolean>("debugLogging", false);
+	private logLevel(): LogLevel {
+		return this.config.get<LogLevel>("logLevel", "info");
 	}
 
 	private shouldSendTools(): boolean {
@@ -156,17 +159,26 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		return this.config.get<string>("mantleRegion", "us-east-1");
 	}
 
-	private logDebug(message: string): void {
-		if (!this.isDebugEnabled()) {
+	private requestTimeoutMs(): number {
+		return this.config.get<number>("requestTimeout", 120000);
+	}
+
+	private log(level: Exclude<LogLevel, "none">, message: string): void {
+		if (!shouldLog(this.logLevel(), level)) {
 			return;
 		}
 		const ts = new Date().toISOString();
-		this.output.appendLine(`[${ts}] ${message}`);
+		this.output.appendLine(`[${ts}] [${level.toUpperCase()}] ${message}`);
 	}
 
+	/** Verbose-tier logging: only shown when logLevel is "verbose". */
+	private logDebug(message: string): void {
+		this.log("verbose", message);
+	}
+
+	/** Info-tier logging: shown at "verbose" and "info" (the default). */
 	private logAlways(message: string): void {
-		const ts = new Date().toISOString();
-		this.output.appendLine(`[${ts}] ${message}`);
+		this.log("info", message);
 	}
 
 	private formatHeaders(headers: Headers): string {
@@ -244,10 +256,9 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 
 		let parsedModels: ParsedModelInfo[] = [];
 
+		const discoveryGuard = createRequestTimeoutGuard(this.requestTimeoutMs(), token);
 		try {
 			this.logDebug(`Fetching Mantle models from ${baseUrl}/models (auth: ${authMethod})`);
-			const abortController = new AbortController();
-			const cancellation = token.onCancellationRequested(() => abortController.abort());
 
 			let headers: Record<string, string> | undefined;
 
@@ -273,9 +284,8 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 			if (headers) {
 				const response = await fetch(`${baseUrl}/models`, {
 					headers,
-					signal: abortController.signal,
+					signal: discoveryGuard.controller.signal,
 				});
-				cancellation.dispose();
 
 				if (!response.ok) {
 					const authDesc = authMethod === "awsCredentials" ? "AWS credentials" : "API key";
@@ -319,10 +329,12 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		} catch (error) {
 			const authDesc = authMethod === "awsCredentials" ? "AWS credentials" : "API key";
 			const message = error instanceof Error ? error.message : String(error);
-			this.logAlways(`Failed to fetch Mantle models using ${authDesc}: ${message}`);
+			this.log("error", `Failed to fetch Mantle models using ${authDesc}: ${message}`);
 			if (!options.silent) {
 				vscode.window.showErrorMessage(`Failed to fetch Mantle models: ${message}`);
 			}
+		} finally {
+			discoveryGuard.dispose();
 		}
 
 		try {
@@ -336,7 +348,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 			}
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
-			this.logAlways(`External model metadata load/apply failed: ${msg}`);
+			this.log("warning", `External model metadata load/apply failed: ${msg}`);
 		}
 
 		disambiguateDisplayNames(parsedModels);
@@ -429,6 +441,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				progress,
 				token,
 				log: (m) => this.logAlways(m),
+				requestTimeoutMs: this.requestTimeoutMs(),
 			});
 			return;
 		}
@@ -478,8 +491,9 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		this._completedToolCallIndices.clear();
 		this._reportedAnyPartInCurrentResponse = false;
 
-		const abortController = new AbortController();
-		const cancellation = token.onCancellationRequested(() => abortController.abort());
+		// Timeout only guards time-to-first-response; cleared below once we have one, so a
+		// long-but-actively-streaming generation is never killed by this timer.
+		const requestGuard = createRequestTimeoutGuard(this.requestTimeoutMs(), token);
 
 		const sendRequest = async (toolsOverride: ChatCompletionRequest["tools"]): Promise<Response> => {
 			const body: ChatCompletionRequest = {
@@ -519,19 +533,20 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				method: "POST",
 				headers,
 				body: bodyString,
-				signal: abortController.signal,
+				signal: requestGuard.controller.signal,
 			});
 		};
 
 		try {
 			let response = await sendRequest(tools);
+			requestGuard.clear();
 
 			this.logDebug(`chat response: status=${response.status} ${response.statusText}`);
 			this.logDebug(`chat response headers:\n${this.formatHeaders(response.headers)}`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
-				this.logAlways(`chat error body (truncated 2000 chars): ${errorText.slice(0, 2000)}`);
+				this.log("warning", `chat error body (truncated 2000 chars): ${errorText.slice(0, 2000)}`);
 
 				// Some models (notably Anthropic Claude) are listed by Mantle's /v1/models
 				// catalog but rejected outright by its /v1/chat/completions invoke endpoint.
@@ -549,7 +564,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				// If we tried tools and the provider rejected them, retry without tools once and cache the outcome.
 				const looksToolRelated = /tool|tool_choice|function_call|tool_calls/i.test(errorText);
 				if (tools && tools.length > 0 && looksToolRelated) {
-					this.logAlways(`model rejected tools; caching toolCalling=false for ${model.id} and retrying without tools`);
+					this.log("warning", `model rejected tools; caching toolCalling=false for ${model.id} and retrying without tools`);
 					const prevMantle = this._mantleToolSupport.get(model.id);
 					this._mantleToolSupport.set(model.id, false);
 					if (prevMantle !== false) {
@@ -558,7 +573,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 					response = await sendRequest(undefined);
 					if (!response.ok) {
 						const retryText = await response.text();
-						this.logAlways(`chat error body after retry (truncated 2000 chars): ${retryText.slice(0, 2000)}`);
+						this.log("error", `chat error body after retry (truncated 2000 chars): ${retryText.slice(0, 2000)}`);
 						throw new Error(`API error ${response.status}: ${retryText}`);
 					}
 				} else {
@@ -613,7 +628,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				} catch {
 					// fall through
 				}
-				this.logAlways("chat parsed no message content; throwing no-response error");
+				this.log("error", "chat parsed no message content; throwing no-response error");
 				throw new Error("Sorry, no response was returned");
 			}
 		} catch (error) {
@@ -622,13 +637,13 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 					this.logDebug("chat request aborted");
 					return;
 				}
-				this.logAlways(`chat exception: ${error.message}`);
+				this.log("error", `chat exception: ${error.message}`);
 				throw error;
 			}
-			this.logAlways("chat exception: Unknown error occurred");
+			this.log("error", "chat exception: Unknown error occurred");
 			throw new Error("Unknown error occurred");
 		} finally {
-			cancellation.dispose();
+			requestGuard.dispose();
 		}
 	}
 
@@ -711,8 +726,8 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				await this.processDelta(chunk, progress);
 				emittedAny = true;
 			} catch (error) {
-				this.logAlways(`Failed to parse SSE chunk (first 500 chars): ${data.slice(0, 500)}`);
-				this.logAlways(`Parse error: ${error instanceof Error ? error.message : String(error)}`);
+				this.log("warning", `Failed to parse SSE chunk (first 500 chars): ${data.slice(0, 500)}`);
+				this.log("warning", `Parse error: ${error instanceof Error ? error.message : String(error)}`);
 			}
 
 			return false;
@@ -725,12 +740,13 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				}
 				const ms = Date.now() - lastByteAt;
 				if (!firstByteReceived && ms >= 5000) {
-					this.logAlways(`No SSE bytes received yet (${Math.round(ms / 1000)}s) - model may be slow or request may be stuck`);
+					this.log("warning", `No SSE bytes received yet (${Math.round(ms / 1000)}s) - model may be slow or request may be stuck`);
 				}
 
 				const dataMs = Date.now() - lastDataAt;
 				if (firstByteReceived && !emittedAny && dataMs >= 15000) {
-					this.logAlways(
+					this.log(
+						"warning",
 						`SSE bytes are arriving but no 'data:' frames seen for ${Math.round(dataMs / 1000)}s (keepalives=${keepAliveCount}). This usually means the model is still queued/running.`
 					);
 					if (this.shouldEmitPlaceholders()) {
@@ -785,7 +801,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		}
 
 		if (!emittedAny && !token.isCancellationRequested) {
-			this.logAlways("SSE stream ended without emitting any content");
+			this.log("error", "SSE stream ended without emitting any content");
 			throw new Error("Sorry, no response was returned");
 		}
 	}

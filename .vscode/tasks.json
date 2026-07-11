@@ -3,9 +3,42 @@
   "tasks": [
     {
       "type": "npm",
-      "script": "watch",
+      "script": "watch:esbuild",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "esbuild",
+        "source": "esbuild",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^\\s*✘ \\[ERROR\\] (.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[watch\\] build started$",
+          "endsPattern": "^\\[watch\\] build finished$"
+        }
+      },
+      "presentation": {
+        "reveal": "never",
+        "group": "watch"
+      },
+      "group": "build"
+    },
+    {
+      "type": "npm",
+      "script": "watch:tsc",
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
+      "presentation": {
+        "reveal": "never",
+        "group": "watch"
+      },
+      "group": "build"
+    },
+    {
+      "label": "watch",
+      "dependsOn": ["watch:esbuild", "watch:tsc"],
       "presentation": {
         "reveal": "never"
       },

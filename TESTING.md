@@ -30,11 +30,11 @@ Then in VS Code:
 
 #### Step 2: Enable Debug Logging
 
-Enable debug logging in VS Code settings:
+Enable verbose logging in VS Code settings:
 ```json
 // .vscode/settings.json or VS Code settings
 {
-  "aws-bedrock.debugLogging": true
+  "aws-bedrock.logLevel": "verbose"
 }
 ```
 
@@ -146,7 +146,7 @@ To test against actual AWS Bedrock:
 - Solution: Use a model known to support tool calling (Claude variants, etc.)
 
 **Issue: Tool blocks still not preserved**
-- Check that `aws-bedrock.debugLogging` is enabled
+- Check that `aws-bedrock.logLevel` is set to `verbose`
 - Review the debug output for hasToolHistory detection
 - Verify the fix was applied: check bedrockNative.ts line 420 should show `const hasTools = !!toolConfig || hasToolHistory...`
 

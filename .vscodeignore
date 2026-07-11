@@ -1,12 +1,34 @@
-# Development-only files
-.vscode/**
+# Source and dev tooling — esbuild bundles everything the extension needs
+# into out/extension.js, so none of this is required at runtime.
 src/**
+node_modules/**
+.vscode/**
+.vscode-test/**
+.github/**
 
-# Build / config not needed at runtime
+# Packaged VSIX archive from past releases (Makefile's `package` target)
+dist/**
+
+# Build / lint / test config not needed at runtime
 tsconfig.json
+esbuild.js
+eslint.config.js
+.eslintrc*
+package-lock.json
+Makefile
+*.map
 
-# Internal notes
+# Docs not needed inside the published extension
+CONTRIBUTING.md
+TESTING.md
 PLAN.md
+QUICKSTART.md
+FIX_SUMMARY.md
+MODEL_CAPABILITIES_STRATEGY.md
+icon.svg
 
-# (optional) If you don't want source maps published, uncomment:
-# out/**/*.map
+# Misc
+.gitignore
+.git/**
+*.vsix
+test-*.js

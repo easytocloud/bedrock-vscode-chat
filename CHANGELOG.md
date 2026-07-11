@@ -5,6 +5,18 @@ All notable changes to the AWS Bedrock GitHub Copilot Chat extension will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-11
+
+### Added
+- **`aws-bedrock.requestTimeout` setting** (default 120000ms): aborts a request that never responds. For streaming requests (Mantle Chat Completions and Messages API) this only guards time-to-first-response — an actively streaming generation is never cut off once it starts. For native Bedrock Converse, which isn't streamed, it covers the whole call. Set to 0 to disable.
+- **`aws-bedrock.logLevel` setting** (`verbose` | `info` | `warning` | `error` | `none`, default `info`): replaces the binary `aws-bedrock.debugLogging` boolean with proper severity levels, so you can dial output up or down without an all-or-nothing firehose. Existing `debugLogging` settings are no longer read — reconfigure with `logLevel` if you had debug logging on.
+
+### Changed
+- **The extension is now bundled with esbuild** into a single `out/extension.js` instead of shipping `node_modules` raw inside the VSIX. This was flagged by `vsce publish` on every release ("This extension consists of 3393 files... you should bundle your extension") — package size drops from ~4.5MB/3300+ files to ~220KB/8 files, with faster install and activation. `.vscodeignore`, `tsconfig.json`, `Makefile`-adjacent build scripts, and the F5 debug watch tasks were all updated to match (dev builds still emit to `out/`, matching the existing `make clean`/debug convention — `dist/` remains reserved for packaged `.vsix` archives).
+
+### Fixed
+- **README badges**: the Version/Installs/Rating badges were rendering as "retired badge" — Shields.io permanently retired its `visual-studio-marketplace` badge category (no documented Microsoft API to source live data from). Replaced with a static "Install" badge linking to the Marketplace listing; the GitHub-sourced License/Stars/Issues badges were unaffected and left as-is.
+
 ## [0.5.1] - 2026-07-11
 
 ### Fixed
@@ -179,6 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Show AWS Bedrock Logs`: Open output channel
 - `Clear AWS Bedrock API Key`: Remove stored API key
 
+[0.6.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.4...v0.4.0

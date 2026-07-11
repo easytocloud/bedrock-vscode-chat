@@ -14,7 +14,7 @@
 import * as vscode from "vscode";
 import type { AnthropicContentBlock, AnthropicMessage, AnthropicMessagesRequest, AnthropicStreamEvent, AnthropicTool } from "./types";
 import { signMantleRequest } from "./awsAuth";
-import { generateCallId, tryParseJSONObject } from "./utils";
+import { createRequestTimeoutGuard, generateCallId, tryParseJSONObject } from "./utils";
 
 /**
  * Claude models confirmed to support Mantle's Messages API. This is NOT the same
@@ -175,6 +175,7 @@ export async function sendMantleMessage(options: {
 	progress: vscode.Progress<vscode.LanguageModelResponsePart>;
 	token: vscode.CancellationToken;
 	log?: (message: string) => void;
+	requestTimeoutMs?: number;
 }): Promise<void> {
 	const url = buildMantleMessagesUrl(options.region);
 	const anthropicMessages = convertVscodeMessagesToAnthropic(options.messages);
@@ -215,16 +216,18 @@ export async function sendMantleMessage(options: {
 		};
 	}
 
-	const abortController = new AbortController();
-	const cancellation = options.token.onCancellationRequested(() => abortController.abort());
+	// Timeout only guards time-to-first-response; cleared below once we have one, so a
+	// long-but-actively-streaming generation is never killed by this timer.
+	const requestGuard = createRequestTimeoutGuard(options.requestTimeoutMs ?? 0, options.token);
 
 	try {
 		const response = await fetch(url, {
 			method: "POST",
 			headers,
 			body: bodyString,
-			signal: abortController.signal,
+			signal: requestGuard.controller.signal,
 		});
+		requestGuard.clear();
 
 		options.log?.(`Mantle Messages API response: status=${response.status}`);
 
@@ -251,7 +254,7 @@ export async function sendMantleMessage(options: {
 		}
 		throw error;
 	} finally {
-		cancellation.dispose();
+		requestGuard.dispose();
 	}
 }
 

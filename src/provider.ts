@@ -13,7 +13,7 @@ import * as vscode from "vscode";
 import type { ParsedModelInfo } from "./types";
 import { converseOnce, listNativeBedrockModels } from "./bedrockNative";
 import { loadExternalMetadataForModels, type ExternalModelMetadata } from "./externalModelMetadata";
-import { isMantleServedModelId, validateRequest } from "./utils";
+import { isMantleServedModelId, shouldLog, validateRequest, type LogLevel } from "./utils";
 
 export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 	private readonly _onDidChangeLanguageModelChatInformation = new vscode.EventEmitter<void>();
@@ -102,8 +102,8 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		// (authoritative), so external metadata's vision flag is intentionally not applied here.
 	}
 
-	private isDebugEnabled(): boolean {
-		return this.config.get<boolean>("debugLogging", false);
+	private logLevel(): LogLevel {
+		return this.config.get<LogLevel>("logLevel", "info");
 	}
 
 	private shouldSendTools(): boolean {
@@ -126,6 +126,10 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		return this.config.get<boolean>("hideMantleModelsFromNative", false);
 	}
 
+	private requestTimeoutMs(): number {
+		return this.config.get<number>("requestTimeout", 120000);
+	}
+
 	private isNativeEnabled(): boolean {
 		return this.config.get<boolean>("enableNative", true);
 	}
@@ -139,17 +143,22 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		return this.config.get<string>("region", "us-east-1");
 	}
 
-	private logDebug(message: string): void {
-		if (!this.isDebugEnabled()) {
+	private log(level: Exclude<LogLevel, "none">, message: string): void {
+		if (!shouldLog(this.logLevel(), level)) {
 			return;
 		}
 		const ts = new Date().toISOString();
-		this.output.appendLine(`[${ts}] ${message}`);
+		this.output.appendLine(`[${ts}] [${level.toUpperCase()}] ${message}`);
 	}
 
+	/** Verbose-tier logging: only shown when logLevel is "verbose". */
+	private logDebug(message: string): void {
+		this.log("verbose", message);
+	}
+
+	/** Info-tier logging: shown at "verbose" and "info" (the default). */
 	private logAlways(message: string): void {
-		const ts = new Date().toISOString();
-		this.output.appendLine(`[${ts}] ${message}`);
+		this.log("info", message);
 	}
 
 	/**
@@ -191,6 +200,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 				assumeLongContextClaudeModels: this.shouldAssumeLongContextClaudeModels(),
 				globalState: this.globalState,
 				log: (m) => this.logDebug(m),
+				requestTimeoutMs: this.requestTimeoutMs(),
 			});
 			// Apply cached tool support probing results.
 			for (const m of nativeModels) {
@@ -204,10 +214,12 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.logAlways(
+			this.log(
+				"error",
 				`native model discovery failed (region=${region} profile=${this.awsProfile() ?? "default"}): ${message}`
 			);
-			this.logAlways(
+			this.log(
+				"warning",
 				"native model discovery requires valid AWS credentials with bedrock:ListFoundationModels. If using SSO, run `aws sso login` and ensure your profile is configured correctly."
 			);
 			if (!options.silent) {
@@ -226,7 +238,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 			}
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
-			this.logAlways(`External model metadata load/apply failed: ${msg}`);
+			this.log("warning", `External model metadata load/apply failed: ${msg}`);
 		}
 
 		// Apply runtime-probed tool support overrides last.
@@ -332,7 +344,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 
 		const validation = validateRequest(messages);
 		if (!validation.valid) {
-			this.logAlways(`native bedrock request invalid: ${validation.error ?? "unknown error"}`);
+			this.log("error", `native bedrock request invalid: ${validation.error ?? "unknown error"}`);
 			throw new Error(`Invalid request: ${validation.error}`);
 		}
 
@@ -355,6 +367,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 				maxTokens,
 				globalState: this.globalState,
 				log: (m) => this.logAlways(m),
+				requestTimeoutMs: this.requestTimeoutMs(),
 			});
 
 			this.reportResponse(resp, progress);
@@ -373,12 +386,12 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 			const message = error instanceof Error ? error.message : String(error);
 			const looksMissingToolResults = /toolresult blocks|expected toolresult/i.test(message);
 			if (looksMissingToolResults) {
-				this.logAlways(`native bedrock request missing tool results for ${model.id}: ${message}`);
+				this.log("error", `native bedrock request missing tool results for ${model.id}: ${message}`);
 				throw error instanceof Error ? error : new Error(message);
 			}
 			const looksToolRelated = /tool|toolconfig|tool\s*use/i.test(message);
 			if (toolsToSend && toolsToSend.length > 0 && looksToolRelated) {
-				this.logAlways(`native bedrock toolConfig rejected by model ${model.id}; retrying without tools: ${message}`);
+				this.log("warning", `native bedrock toolConfig rejected by model ${model.id}; retrying without tools: ${message}`);
 				const prevNative = this._nativeToolSupport.get(model.id);
 				this._nativeToolSupport.set(model.id, false);
 				if (prevNative !== false) {
@@ -397,12 +410,13 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 					maxTokens,
 					globalState: this.globalState,
 					log: (m) => this.logAlways(m),
+					requestTimeoutMs: this.requestTimeoutMs(),
 				});
 				this.reportResponse(resp, progress);
 				return;
 			}
 
-			this.logAlways(`native bedrock error: ${message}`);
+			this.log("error", `native bedrock error: ${message}`);
 			throw error instanceof Error ? error : new Error(message);
 		}
 	}

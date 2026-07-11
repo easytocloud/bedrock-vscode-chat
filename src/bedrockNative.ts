@@ -10,7 +10,7 @@ import {
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
 import type { ParsedModelInfo } from "./types";
-import { disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits } from "./utils";
+import { createRequestTimeoutGuard, disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits } from "./utils";
 
 function getCredentials(profile: string | undefined) {
 	const trimmed = (profile ?? "").trim();
@@ -83,6 +83,7 @@ async function resolveInferenceProfileIdentifierForModel(options: {
 	globalState?: vscode.Memento;
 	log?: (message: string) => void;
 	forceRefresh?: boolean;
+	requestTimeoutMs?: number;
 }): Promise<InferenceProfileResolution | undefined> {
 	const key = inferenceProfileCacheKey(options.region, options.awsProfile, options.modelId);
 
@@ -109,12 +110,19 @@ async function resolveInferenceProfileIdentifierForModel(options: {
 	let bestScore = -1;
 
 	do {
-		const resp = await client.send(
-			new ListInferenceProfilesCommand({
-				maxResults: 100,
-				nextToken,
-			})
-		);
+		const guard = createRequestTimeoutGuard(options.requestTimeoutMs ?? 0);
+		let resp;
+		try {
+			resp = await client.send(
+				new ListInferenceProfilesCommand({
+					maxResults: 100,
+					nextToken,
+				}),
+				{ abortSignal: guard.controller.signal }
+			);
+		} finally {
+			guard.dispose();
+		}
 		const profiles: any[] = Array.isArray((resp as any)?.inferenceProfileSummaries)
 			? ((resp as any).inferenceProfileSummaries as any[])
 			: [];
@@ -183,6 +191,7 @@ async function listInferenceProfileModelMap(options: {
 	region: string;
 	awsProfile: string | undefined;
 	userAgent: string;
+	requestTimeoutMs?: number;
 }): Promise<Map<string, { identifier: string; name?: string }>> {
 	const credentials = getCredentials(options.awsProfile);
 	const client = new BedrockClient({
@@ -195,12 +204,19 @@ async function listInferenceProfileModelMap(options: {
 	let nextToken: string | undefined;
 
 	do {
-		const resp = await client.send(
-			new ListInferenceProfilesCommand({
-				maxResults: 100,
-				nextToken,
-			})
-		);
+		const guard = createRequestTimeoutGuard(options.requestTimeoutMs ?? 0);
+		let resp;
+		try {
+			resp = await client.send(
+				new ListInferenceProfilesCommand({
+					maxResults: 100,
+					nextToken,
+				}),
+				{ abortSignal: guard.controller.signal }
+			);
+		} finally {
+			guard.dispose();
+		}
 		const profiles: any[] = Array.isArray((resp as any)?.inferenceProfileSummaries)
 			? ((resp as any).inferenceProfileSummaries as any[])
 			: [];
@@ -245,6 +261,7 @@ export async function listNativeBedrockModels(options: {
 	assumeLongContextClaudeModels?: boolean;
 	globalState?: vscode.Memento;
 	log?: (message: string) => void;
+	requestTimeoutMs?: number;
 }): Promise<ParsedModelInfo[]> {
 	const credentials = getCredentials(options.awsProfile);
 	const client = new BedrockClient({
@@ -253,19 +270,27 @@ export async function listNativeBedrockModels(options: {
 		customUserAgent: buildUserAgentFragment(options.userAgent),
 	});
 
-	const [resp, profileMap] = await Promise.all([
-		client.send(new ListFoundationModelsCommand({})),
-		listInferenceProfileModelMap({
-			region: options.region,
-			awsProfile: options.awsProfile,
-			userAgent: options.userAgent,
-		}).catch((e) => {
-			options.log?.(
-				`Failed to list inference profiles during model discovery (will fall back to reactive resolution): ${e instanceof Error ? e.message : String(e)}`
-			);
-			return new Map<string, { identifier: string; name?: string }>();
-		}),
-	]);
+	const listGuard = createRequestTimeoutGuard(options.requestTimeoutMs ?? 0);
+	let resp;
+	let profileMap: Map<string, { identifier: string; name?: string }>;
+	try {
+		[resp, profileMap] = await Promise.all([
+			client.send(new ListFoundationModelsCommand({}), { abortSignal: listGuard.controller.signal }),
+			listInferenceProfileModelMap({
+				region: options.region,
+				awsProfile: options.awsProfile,
+				userAgent: options.userAgent,
+				requestTimeoutMs: options.requestTimeoutMs,
+			}).catch((e) => {
+				options.log?.(
+					`Failed to list inference profiles during model discovery (will fall back to reactive resolution): ${e instanceof Error ? e.message : String(e)}`
+				);
+				return new Map<string, { identifier: string; name?: string }>();
+			}),
+		]);
+	} finally {
+		listGuard.dispose();
+	}
 	const summaries = resp.modelSummaries ?? [];
 
 	const models: ParsedModelInfo[] = summaries
@@ -543,6 +568,8 @@ export async function converseOnce(options: {
 	maxTokens?: number;
 	globalState?: vscode.Memento;
 	log?: (message: string) => void;
+	/** Converse is non-streaming, so this covers the whole call, not just time-to-first-byte. */
+	requestTimeoutMs?: number;
 }): Promise<{
 	text: string;
 	toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }>;
@@ -571,18 +598,24 @@ export async function converseOnce(options: {
 	const converted = convertVscodeMessagesToBedrock(options.messages, { allowToolBlocks: hasTools, includeCachePoint });
 
 	const sendConverse = async (modelId: string) => {
-		return runtime.send(
-			new ConverseCommand({
-				modelId,
-				system: converted.system,
-				messages: converted.messages,
-				toolConfig,
-				inferenceConfig: {
-					temperature: options.temperature,
-					maxTokens: options.maxTokens,
-				},
-			})
-		);
+		const guard = createRequestTimeoutGuard(options.requestTimeoutMs ?? 0);
+		try {
+			return await runtime.send(
+				new ConverseCommand({
+					modelId,
+					system: converted.system,
+					messages: converted.messages,
+					toolConfig,
+					inferenceConfig: {
+						temperature: options.temperature,
+						maxTokens: options.maxTokens,
+					},
+				}),
+				{ abortSignal: guard.controller.signal }
+			);
+		} finally {
+			guard.dispose();
+		}
 	};
 
 	if (hasTools) {
@@ -615,6 +648,7 @@ export async function converseOnce(options: {
 				globalState: options.globalState,
 				log: options.log,
 				forceRefresh: true,
+				requestTimeoutMs: options.requestTimeoutMs,
 			});
 			if (!refreshed) {
 				throw retryErr;
@@ -636,6 +670,7 @@ export async function converseOnce(options: {
 			modelId: options.modelId,
 			globalState: options.globalState,
 			log: options.log,
+			requestTimeoutMs: options.requestTimeoutMs,
 		});
 		resp = resolution
 			? await sendViaResolvedProfile(resolution)
@@ -659,6 +694,7 @@ export async function converseOnce(options: {
 				modelId: options.modelId,
 				globalState: options.globalState,
 				log: options.log,
+				requestTimeoutMs: options.requestTimeoutMs,
 			});
 			if (!resolution) {
 				throw err;

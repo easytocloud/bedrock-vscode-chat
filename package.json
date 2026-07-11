@@ -2,7 +2,7 @@
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "Bedrock LLMs for GitHub Copilot Chat",
   "description": "Use AWS Bedrock models in GitHub Copilot Chat with streaming, tool calling, and multi-region support",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "publisher": "easytocloud",
   "icon": "icon.png",
   "repository": {
@@ -79,11 +79,32 @@
             "default": true,
             "description": "Show every model Bedrock returns, including specialized variants like safeguard/guardrail models. Turn off to only see general-purpose chat models. Applies to both the Native and Mantle providers."
           },
-          "aws-bedrock.debugLogging": {
-            "type": "boolean",
+          "aws-bedrock.logLevel": {
+            "type": "string",
             "order": 2,
-            "default": false,
-            "markdownDescription": "Log verbose request/response details to the **AWS Bedrock** Output channel. Turn this on before reporting an issue. Applies to both the Native and Mantle providers."
+            "enum": [
+              "verbose",
+              "info",
+              "warning",
+              "error",
+              "none"
+            ],
+            "enumDescriptions": [
+              "Every request/response detail, including full request bodies and SSE stream chunks. Turn this on before reporting an issue.",
+              "Lifecycle events (model discovery, request summaries) plus warnings and errors. The default.",
+              "Warnings and errors only, e.g. a self-healing retry or a metadata fetch that failed.",
+              "Errors only, e.g. a request that ultimately failed.",
+              "No output channel logging."
+            ],
+            "default": "info",
+            "markdownDescription": "How much detail to log to the **AWS Bedrock** Output channel. Applies to both the Native and Mantle providers."
+          },
+          "aws-bedrock.requestTimeout": {
+            "type": "number",
+            "order": 3,
+            "default": 120000,
+            "minimum": 0,
+            "markdownDescription": "Maximum time (ms) to wait for a response before aborting a request. For streaming requests (Mantle Chat Completions and Messages API) this only covers time-to-first-response — an actively streaming generation is never cut off once it starts. For native Bedrock Converse, which is not streamed, this covers the whole call. Applies to both the Native and Mantle providers. Set to 0 to disable."
           }
         }
       },
@@ -292,9 +313,13 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && node esbuild.js",
+    "check-types": "tsc --noEmit -p ./",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch -p ./",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "lint": "eslint src --ext ts"
   },
   "dependencies": {
@@ -311,7 +336,9 @@
     "@types/vscode": "^1.104.0",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
+    "esbuild": "^0.28.1",
     "eslint": "^9.15.0",
+    "npm-run-all": "^4.1.5",
     "typescript": "^5.6.0"
   }
 }

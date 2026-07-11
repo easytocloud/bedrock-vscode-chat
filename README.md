@@ -1,8 +1,6 @@
 # AWS Bedrock Models for GitHub Copilot Chat (VS Code Extension)
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/easytocloud.bedrock-mantle-vscode-chat?style=flat-square&label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=easytocloud.bedrock-mantle-vscode-chat)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/easytocloud.bedrock-mantle-vscode-chat?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=easytocloud.bedrock-mantle-vscode-chat)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/easytocloud.bedrock-mantle-vscode-chat?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=easytocloud.bedrock-mantle-vscode-chat)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?style=flat-square&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=easytocloud.bedrock-mantle-vscode-chat)
 [![License](https://img.shields.io/github/license/easytocloud/bedrock-vscode-chat?style=flat-square)](https://github.com/easytocloud/bedrock-vscode-chat/blob/main/LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/easytocloud/bedrock-vscode-chat?style=flat-square&logo=github)](https://github.com/easytocloud/bedrock-vscode-chat)
 [![GitHub Issues](https://img.shields.io/github/issues/easytocloud/bedrock-vscode-chat?style=flat-square&logo=github)](https://github.com/easytocloud/bedrock-vscode-chat/issues)
@@ -180,7 +178,8 @@ Settings are grouped into sections in VS Code's Settings UI (search `aws-bedrock
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `aws-bedrock.showAllModels` | boolean | `true` | Show all models including specialized variants (applies to both providers) |
-| `aws-bedrock.debugLogging` | boolean | `false` | Enable verbose debug logging (applies to both providers) |
+| `aws-bedrock.logLevel` | string | `info` | Output channel verbosity: `verbose`, `info`, `warning`, `error`, or `none` (applies to both providers) |
+| `aws-bedrock.requestTimeout` | number | `120000` | Max time (ms) to wait for a response before aborting; 0 disables. Streaming requests only time out waiting for the *first* response (applies to both providers) |
 | `aws-bedrock.enableNative` | boolean | `true` | Register the native Bedrock (Converse API) provider |
 | `aws-bedrock.awsProfile` | string | empty | Optional AWS profile for native Bedrock |
 | `aws-bedrock.region` | string | `us-east-1` | AWS region for native Bedrock (18 supported regions) |
@@ -389,7 +388,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed d
 **Key development notes:**
 - Publisher name: `easytocloud` (lowercase)
 - Use Output Channel for logging, not console.log
-- Include node_modules in VSIX (required for AWS SDK)
+- The extension is bundled with esbuild (`out/extension.js`) — `node_modules` is excluded from the VSIX
 - Test in both F5 mode and installed VSIX
 - Use `rsvg-convert` for icon generation
 
@@ -421,6 +420,6 @@ Inspired by the [HuggingFace extension for GitHub Copilot Chat](https://github.c
 
 ---
 
-**Version**: 0.5.0  
+**Version**: 0.6.0  
 **Status**: Production
 **Last Updated**: July 11, 2026

@@ -24,15 +24,13 @@ npm run compile
 - **Display Name**: "Bedrock LLMs for GitHub Copilot Chat"
 
 ### Package Structure
-The extension **MUST** include `node_modules` in the VSIX package because it uses AWS SDK dependencies that are not available in the VS Code runtime.
-
-**Important**: `.vscodeignore` should NOT exclude `node_modules/**`
+The extension is bundled with esbuild (`esbuild.js`) into a single `out/extension.js`, with all runtime dependencies (AWS SDK, etc.) inlined. `node_modules` is excluded from the VSIX (`.vscodeignore`) — it isn't needed at runtime and would otherwise balloon the package to thousands of files.
 
 ## Development Workflow
 
 ### 1. Local Development (Extension Development Host)
 
-Press `F5` to launch the Extension Development Host. This uses your local `node_modules` and provides:
+Press `F5` to launch the Extension Development Host. This runs the esbuild-bundled `out/extension.js` and provides:
 - Live debugging with breakpoints
 - Console output in the Debug Console
 - Hot reload on changes (Cmd/Ctrl+R)
@@ -42,8 +40,8 @@ Press `F5` to launch the Extension Development Host. This uses your local `node_
 To test the extension as users will experience it:
 
 ```bash
-# Package the extension
-npm run compile
+# Package the extension (type-checks, lints, and produces a minified production bundle)
+npm run package
 npx @vscode/vsce package --out dist/
 
 # Install to VS Code Insiders (if that's what you're using)
@@ -80,8 +78,8 @@ If the extension doesn't appear or activate:
    - Look for errors in Console tab
 
 3. **Common Issues:**
-   - Missing dependencies → Check `node_modules` is in VSIX
-   - Syntax errors → Check compilation succeeded
+   - Missing dependencies → Check the esbuild bundle (`out/extension.js`) built without errors
+   - Syntax errors → Check `npm run check-types` succeeded
    - Activation event not firing → Check `activationEvents` in package.json
 
 ## Logging Best Practices
@@ -288,8 +286,8 @@ The extension supports two backends:
 
 ### "Cannot find module '@aws-sdk/client-bedrock'"
 
-**Cause**: Dependencies not included in VSIX
-**Fix**: Ensure `.vscodeignore` does NOT exclude `node_modules/**`
+**Cause**: The esbuild bundle wasn't rebuilt after a dependency change, or `main` doesn't point at the bundle
+**Fix**: Run `npm run compile` (or `npm run package` for a production build) and confirm `main` in package.json is `"./out/extension.js"`
 
 ### No logs in Output Channel
 

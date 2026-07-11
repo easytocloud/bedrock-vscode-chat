@@ -466,6 +466,61 @@ export function generateCallId(): string {
 	return `call_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export type LogLevel = "verbose" | "info" | "warning" | "error" | "none";
+
+const LOG_LEVEL_ORDER: Record<LogLevel, number> = {
+	verbose: 0,
+	info: 1,
+	warning: 2,
+	error: 3,
+	none: 4,
+};
+
+/** True when a message at `messageLevel` should be emitted given the user's configured `logLevel`. */
+export function shouldLog(configuredLevel: LogLevel, messageLevel: Exclude<LogLevel, "none">): boolean {
+	return LOG_LEVEL_ORDER[messageLevel] >= LOG_LEVEL_ORDER[configuredLevel];
+}
+
+export interface RequestTimeoutGuard {
+	controller: AbortController;
+	/** Stop the timeout from firing — call once a response has been received. */
+	clear: () => void;
+	/** Clear the timer and unsubscribe from the cancellation token. Always call when the request is done. */
+	dispose: () => void;
+}
+
+/**
+ * An AbortController that aborts itself if `timeoutMs` elapses with no call to `clear()`,
+ * and also aborts when the given VS Code cancellation token fires. For streaming requests,
+ * call `clear()` once the initial response is received so a long-but-actively-streaming
+ * generation isn't killed — the timeout only guards against a request that never responds
+ * at all. For non-streaming requests, leave it unset so the timeout covers the whole call.
+ */
+export function createRequestTimeoutGuard(timeoutMs: number, token?: vscode.CancellationToken): RequestTimeoutGuard {
+	const controller = new AbortController();
+	let timer: ReturnType<typeof setTimeout> | undefined =
+		timeoutMs > 0
+			? setTimeout(() => controller.abort(new Error(`Request timed out after ${timeoutMs}ms with no response`)), timeoutMs)
+			: undefined;
+	const sub = token?.onCancellationRequested(() => controller.abort());
+
+	return {
+		controller,
+		clear: () => {
+			if (timer) {
+				clearTimeout(timer);
+				timer = undefined;
+			}
+		},
+		dispose: () => {
+			if (timer) {
+				clearTimeout(timer);
+			}
+			sub?.dispose();
+		},
+	};
+}
+
 /**
  * VS Code's model picker uses `name` as the visible label, and entries that share an
  * identical label can become effectively unselectable (only distinguishable by hovering
