@@ -2,7 +2,7 @@
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "Bedrock LLMs for GitHub Copilot Chat",
   "description": "Use AWS Bedrock models in GitHub Copilot Chat with streaming, tool calling, and multi-region support",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "easytocloud",
   "icon": "icon.png",
   "repository": {
@@ -23,6 +23,7 @@
     "github copilot",
     "copilot chat",
     "language model",
+    "language-models",
     "llm",
     "claude",
     "llama",

@@ -5,6 +5,11 @@ All notable changes to the AWS Bedrock GitHub Copilot Chat extension will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-07-11
+
+### Fixed
+- Added the `language-models` keyword so the extension is discoverable via the Marketplace's `@tag:language-models` filter (used by VS Code's "Manage Language Models" → "Install Model Providers" flow). This tag isn't auto-derived from the `languageModelChatProviders` contribution point — confirmed by querying the Marketplace gallery API directly — it's a plain keyword extension authors add themselves.
+
 ## [0.5.0] - 2026-07-11
 
 ### Added
@@ -174,6 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Show AWS Bedrock Logs`: Open output channel
 - `Clear AWS Bedrock API Key`: Remove stored API key
 
+[0.5.1]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.4...v0.4.0
 [0.3.4]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.3...v0.3.4
