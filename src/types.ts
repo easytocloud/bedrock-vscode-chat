@@ -193,4 +193,71 @@ export interface ParsedModelInfo {
 	 * expected to fail and the profile identifier should be used instead.
 	 */
 	requiresInferenceProfile?: boolean;
+	/**
+	 * Mantle only: true when this Claude model is invoked through Mantle's Anthropic
+	 * Messages API (/anthropic/v1/messages) rather than its OpenAI-compatible Chat
+	 * Completions API (/v1/chat/completions), which no Claude model supports.
+	 */
+	usesMantleMessagesApi?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Anthropic Messages API (used by Mantle's /anthropic/v1/messages for the
+// subset of Claude models that support it — see mantleMessages.ts)
+// ---------------------------------------------------------------------------
+
+export type AnthropicRole = "user" | "assistant";
+
+export type AnthropicContentBlock =
+	| { type: "text"; text: string }
+	| { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+	| { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+	| { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean };
+
+export interface AnthropicMessage {
+	role: AnthropicRole;
+	content: AnthropicContentBlock[];
+}
+
+export interface AnthropicTool {
+	name: string;
+	description?: string;
+	input_schema: Record<string, unknown>;
+}
+
+export interface AnthropicMessagesRequest {
+	model: string;
+	max_tokens: number;
+	messages: AnthropicMessage[];
+	system?: string;
+	tools?: AnthropicTool[];
+	temperature?: number;
+	stream?: boolean;
+}
+
+export interface AnthropicMessagesResponse {
+	id: string;
+	type: "message";
+	role: "assistant";
+	content: AnthropicContentBlock[];
+	stop_reason: string | null;
+	usage?: { input_tokens: number; output_tokens: number };
+}
+
+/**
+ * Streaming SSE event shapes for the Messages API. Field names match Anthropic's
+ * public API exactly (unchanged by the bedrock-mantle wrapper).
+ */
+export type AnthropicStreamEvent =
+	| { type: "message_start"; message: Partial<AnthropicMessagesResponse> }
+	| { type: "content_block_start"; index: number; content_block: AnthropicContentBlock }
+	| {
+			type: "content_block_delta";
+			index: number;
+			delta: { type: "text_delta"; text: string } | { type: "input_json_delta"; partial_json: string };
+	  }
+	| { type: "content_block_stop"; index: number }
+	| { type: "message_delta"; delta: { stop_reason?: string | null }; usage?: { output_tokens: number } }
+	| { type: "message_stop" }
+	| { type: "ping" }
+	| { type: "error"; error: { type: string; message: string } };

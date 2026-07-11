@@ -10,7 +10,7 @@ import {
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
 import type { ParsedModelInfo } from "./types";
-import { inferModelCapabilities, inferTokenLimits } from "./utils";
+import { disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits } from "./utils";
 
 function getCredentials(profile: string | undefined) {
 	const trimmed = (profile ?? "").trim();
@@ -339,6 +339,11 @@ export async function listNativeBedrockModels(options: {
 				requiresInferenceProfile: !!profileMatch,
 			};
 		});
+
+	// Disambiguate any models that formatted to the same display name (e.g. distinct
+	// catalog entries whose IDs differ only in a part formatDisplayName doesn't surface)
+	// before sorting, so the sort order reflects what's actually shown.
+	disambiguateDisplayNames(models);
 
 	// Stable ordering for the picker.
 	models.sort((a, b) => a.displayName.localeCompare(b.displayName));

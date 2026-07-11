@@ -5,6 +5,18 @@ All notable changes to the AWS Bedrock GitHub Copilot Chat extension will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-11
+
+### Added
+- **Split into two separate language model providers**: "AWS Bedrock" (native Converse API) and "AWS Bedrock Mantle" (OpenAI-compatible), each with its own vendor ID, region setting, and "Manage" command. Native and Mantle are genuinely different AWS Bedrock endpoints — different region footprints, auth details, and model coverage — so merging them into one provider was misleading. Existing native model selections are unaffected (the original vendor ID was kept for native).
+- **Anthropic Messages API support on Mantle** (`/anthropic/v1/messages`): Claude models that Mantle actually supports (Sonnet 5, Haiku 4.5, Opus 4.7, Opus 4.8, Fable 5, Mythos 5, Mythos Preview) are now invoked through Mantle's separate Messages API instead of being hidden. No Claude model supports Mantle's Chat Completions API (`/v1/chat/completions`) on any Bedrock endpoint — that was the actual bug behind the "does not support the '/v1/chat/completions' API" crash, not a blanket Claude/Mantle incompatibility.
+- **`aws-bedrock.mantleRegion` setting**: Mantle is deployed to a strict subset of native Bedrock's regions (13 vs 18) — picking a native-only region (`us-west-1`, `ca-central-1`, `eu-west-3`, `ap-northeast-2`, `ap-southeast-1`) no longer silently breaks Mantle.
+- **`aws-bedrock.hideMantleModelsFromNative` setting** (default off): optionally hides open-weight models (DeepSeek, Mistral, Qwen, GLM, Nemotron, MiniMax, Kimi, Gemma, gpt-oss) from the native provider's list when they're also available via Mantle, so each model appears in one picker instead of both.
+- Automatic display-name disambiguation: any models that would otherwise show identical labels in the picker (only distinguishable by tooltip, and effectively unselectable in some VS Code UI) now get the raw technical model ID appended so every entry stays unique.
+
+### Fixed
+- **Amazon Nova, Cohere Command R/R+, and AI21 Jamba models were invisible in VS Code's Agent mode** from first launch. VS Code only shows tool-capable models in the Agent-mode picker, and these three families support tool use on native Bedrock Converse but weren't in the tool-calling heuristic's pattern list and don't carry a parameter-count suffix in their model IDs to fall back on — so they defaulted to "no tool support" with no way to self-correct via runtime probing (a model that's never selectable can never be probed).
+
 ## [0.4.0] - 2026-07-11
 
 ### Added
@@ -162,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Show AWS Bedrock Logs`: Open output channel
 - `Clear AWS Bedrock API Key`: Remove stored API key
 
+[0.5.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.4...v0.4.0
 [0.3.4]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.2...v0.3.3

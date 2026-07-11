@@ -242,9 +242,11 @@ registerCommandSafe("bedrock-mantle-vscode-chat.myCommand", myCommandHandler);
 
 ### Key Files
 
-- `src/extension.ts` - Extension entry point, command registration
-- `src/provider.ts` - Main provider implementing `LanguageModelChatProvider`
+- `src/extension.ts` - Extension entry point; registers both providers, command registration
+- `src/provider.ts` - `NativeBedrockProvider`, implementing `LanguageModelChatProvider` for native Bedrock (Converse API)
 - `src/bedrockNative.ts` - Native AWS Bedrock support via Converse API
+- `src/mantleProvider.ts` - `MantleProvider`, implementing `LanguageModelChatProvider` for Mantle (Chat Completions + Messages dispatch)
+- `src/mantleMessages.ts` - Mantle's Anthropic Messages API client
 - `src/utils.ts` - Utility functions for message conversion, etc.
 - `src/types.ts` - TypeScript type definitions
 - `src/externalModelMetadata.ts` - External model capability metadata loading

@@ -232,6 +232,15 @@ export function inferModelCapabilities(modelId: string): ModelCapabilities {
 		lowerModelId.includes("minimax") ||
 		lowerModelId.includes("llama") ||
 		lowerModelId.includes("titan") ||
+		// VS Code's chat model picker only shows tool-capable models in Agent mode (models
+		// without tool calling are hidden there entirely, not just downgraded) — these
+		// families support tool use on native Bedrock Converse but don't carry a parameter
+		// count in their model ID and were missing from this list, making them invisible in
+		// Agent mode from the very first launch with no way to self-correct via runtime probing.
+		lowerModelId.includes("nova") ||
+		lowerModelId.includes("cohere") ||
+		lowerModelId.includes("command-r") ||
+		lowerModelId.includes("jamba") ||
 		// Strong signal: marketed as an instruct/chat model
 		looksLikeChatModel ||
 		// Assume models over 30B parameters likely support tools
@@ -243,6 +252,32 @@ export function inferModelCapabilities(modelId: string): ModelCapabilities {
 		isCodeSpecialized,
 		isThinking,
 	};
+}
+
+/**
+ * Model-family substrings Mantle serves via its Chat Completions API (open-weight/
+ * 3rd-party models — DeepSeek, Mistral, Qwen, GLM, Nemotron, MiniMax, Kimi, Gemma,
+ * gpt-oss, Palmyra). Used only when aws-bedrock.hideMantleModelsFromNative is enabled,
+ * to declutter the native provider's list of models also reachable through Mantle.
+ * Maintained list — Mantle's catalog isn't derivable from the model ID pattern or
+ * exposed by ListFoundationModels. Snapshot from AWS docs on 2026-07-11.
+ */
+const MANTLE_CHAT_COMPLETIONS_FAMILIES = [
+	"deepseek",
+	"mistral",
+	"qwen",
+	"glm",
+	"nemotron",
+	"minimax",
+	"kimi",
+	"gemma",
+	"gpt-oss",
+	"palmyra",
+];
+
+export function isMantleServedModelId(modelId: string): boolean {
+	const id = modelId.toLowerCase();
+	return MANTLE_CHAT_COMPLETIONS_FAMILIES.some((f) => id.includes(f));
 }
 
 /**
@@ -429,4 +464,24 @@ export function buildEndpointUrl(region: string): string {
  */
 export function generateCallId(): string {
 	return `call_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * VS Code's model picker uses `name` as the visible label, and entries that share an
+ * identical label can become effectively unselectable (only distinguishable by hovering
+ * for the tooltip, if at all) even though their underlying `id`/`modelId` differ — e.g.
+ * two model catalog entries that format to the same display name. Mutates `displayName`
+ * in place for any model whose name collides with another model's, appending the raw
+ * technical model ID so every entry stays uniquely selectable.
+ */
+export function disambiguateDisplayNames(models: ParsedModelInfo[]): void {
+	const countByName = new Map<string, number>();
+	for (const m of models) {
+		countByName.set(m.displayName, (countByName.get(m.displayName) ?? 0) + 1);
+	}
+	for (const m of models) {
+		if ((countByName.get(m.displayName) ?? 0) > 1) {
+			m.displayName = `${m.displayName} [${m.modelId}]`;
+		}
+	}
 }

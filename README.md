@@ -9,10 +9,17 @@
 
 Use AWS Bedrock models directly in GitHub Copilot Chat, including Claude, Llama, Mistral, Qwen, and more.
 
+This extension registers **two separate language model providers**, because native Bedrock and Mantle are genuinely different AWS Bedrock endpoints — different regions, different auth details, and different model coverage:
+
+- **AWS Bedrock** (native Converse API) — the full Bedrock foundation model catalog, including all Anthropic Claude models, across 18 AWS regions.
+- **AWS Bedrock Mantle** (OpenAI-compatible + Anthropic Messages API) — open-weight models (DeepSeek, Mistral, Qwen, GLM, Nemotron, MiniMax, Kimi, Gemma, gpt-oss) plus the subset of current Claude models Mantle supports, across 13 AWS regions.
+
+Both show up together in the Copilot Chat model picker; enable either or both independently.
+
 - **Keep code and prompts in your AWS account** for stronger governance
 - **Choose your AWS region** to align with residency and compliance requirements
 - **Streaming + tool calling** for responsive coding workflows
-- **Multi-region support** across 18 AWS regions
+- **Multi-region support** across 18 AWS regions (native) / 13 AWS regions (Mantle)
 
 ## Why This Extension
 
@@ -95,66 +102,49 @@ Authentication options:
 
 ## Setup
 
-### 1. Configure Authentication (Optional)
+Native Bedrock and Mantle each have their own management command, since they're independent providers with independent settings.
 
-The extension supports two authentication methods:
+### 1. Native Bedrock (Converse API)
 
-#### Option A: API Key (Simpler)
-
-**Via Command Palette:**
 1. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-2. Run: `Manage AWS Bedrock`
-3. Select "Enter API Key (Mantle)"
-4. Paste your API key from AWS Bedrock Console
+2. Run: `Manage AWS Bedrock (Native)`
+3. **Set AWS Profile** — optional named profile (leave blank for the default AWS credential chain)
+4. **Change Region** — choose from native Bedrock's 18 supported regions (default `us-east-1`)
 
-**On First Use:**
-- The extension will prompt for your API key when required
-- Your key is stored securely in VS Code's SecretStorage
+Native Bedrock always authenticates with AWS credentials (env vars, `~/.aws/credentials`, SSO, etc.) — there's no API key option here.
 
-#### Option B: AWS Credentials (Better for existing AWS setups)
+### 2. Mantle (OpenAI-compatible + Anthropic Messages)
 
 1. Open Command Palette
-2. Run: `Manage AWS Bedrock`
-3. Select "Configure Mantle Authentication"
-4. Choose "AWS Credentials"
-5. Optionally set a specific profile via "Set AWS Profile (Mantle)"
+2. Run: `Manage AWS Bedrock Mantle`
+3. **Configure Authentication** — choose API Key (simpler) or AWS Credentials
+   - **API Key**: run `Manage AWS Bedrock Mantle` → "Enter API Key" and paste your key from the [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/). You'll also be prompted automatically on first use. Keys are stored in VS Code's SecretStorage.
+   - **AWS Credentials**: uses AWS Signature V4 with your existing credentials; optionally set a specific profile via "Set AWS Profile"
+4. **Change Region** — choose from Mantle's 13 supported regions (a strict subset of native Bedrock's — default `us-east-1`)
 
-This method uses AWS Signature V4 authentication with your existing AWS credentials.
+### Configure via Settings
 
-### 2. Configure AWS Profile (Optional)
+Both providers' settings can also be set directly:
 
-If you want a specific named profile:
-
-1. Run: `Manage AWS Bedrock`
-2. Select "Set AWS Profile (Native)"
-3. Enter a profile name (or leave blank to use the default credential chain)
-
-### 3. Select Region (Optional)
-
-Default region is `us-east-1`. To change:
-
-1. Open Command Palette
-2. Run: `Manage AWS Bedrock`
-3. Select "Change Region"
-4. Choose your preferred AWS region
-
-Or set in Settings:
 ```json
 {
-  "aws-bedrock.region": "us-west-2",
-  "aws-bedrock.mantleAuthMethod": "awsCredentials",  // or "apiKey"
-  "aws-bedrock.mantleAwsProfile": "my-profile",      // optional
-  "aws-bedrock.awsProfile": "my-profile"             // for native Bedrock
+  "aws-bedrock.region": "us-west-2",               // native Bedrock region
+  "aws-bedrock.awsProfile": "my-profile",          // native Bedrock AWS profile
+
+  "aws-bedrock.mantleRegion": "us-east-1",         // Mantle region (smaller region list than native)
+  "aws-bedrock.mantleAuthMethod": "awsCredentials", // or "apiKey"
+  "aws-bedrock.mantleAwsProfile": "my-profile"      // optional
 }
 ```
 
-### 4. Configure Model Visibility (Optional)
+### Configure Model Visibility (Optional)
 
-Show/hide specialized models (like safeguard variants):
+Show/hide specialized models (like safeguard variants), and optionally hide open-weight models from the native picker when they're also available via Mantle:
 
 ```json
 {
-  "aws-bedrock.showAllModels": true  // default: true
+  "aws-bedrock.showAllModels": true,               // default: true
+  "aws-bedrock.hideMantleModelsFromNative": false  // default: false
 }
 ```
 
@@ -185,18 +175,20 @@ Assistant (via Bedrock): [Streams response in real-time...]
 
 ### Settings
 
-Settings are grouped into sections in VS Code's Settings UI (search `aws-bedrock`): **AWS Bedrock**, **› Mantle**, **› Native**, **› Chat Behavior**, and **› Model Metadata**.
+Settings are grouped into sections in VS Code's Settings UI (search `aws-bedrock`): **AWS Bedrock**, **› Native (Converse API)**, **› Mantle (OpenAI-compatible)**, **› Chat Behavior**, and **› Model Metadata**.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `aws-bedrock.region` | string | `us-east-1` | AWS region for Bedrock requests |
-| `aws-bedrock.showAllModels` | boolean | `true` | Show all models including specialized variants |
-| `aws-bedrock.debugLogging` | boolean | `false` | Enable verbose debug logging |
-| `aws-bedrock.enableMantle` | boolean | `true` | Enable models available through API key mode |
-| `aws-bedrock.mantleAuthMethod` | string | `apiKey` | Auth mode for API key path: apiKey or awsCredentials |
-| `aws-bedrock.mantleAwsProfile` | string | empty | Optional AWS profile for API key path when using credentials |
-| `aws-bedrock.enableNative` | boolean | `true` | Enable models available through Converse API |
-| `aws-bedrock.awsProfile` | string | empty | Optional AWS profile for Converse API path |
+| `aws-bedrock.showAllModels` | boolean | `true` | Show all models including specialized variants (applies to both providers) |
+| `aws-bedrock.debugLogging` | boolean | `false` | Enable verbose debug logging (applies to both providers) |
+| `aws-bedrock.enableNative` | boolean | `true` | Register the native Bedrock (Converse API) provider |
+| `aws-bedrock.awsProfile` | string | empty | Optional AWS profile for native Bedrock |
+| `aws-bedrock.region` | string | `us-east-1` | AWS region for native Bedrock (18 supported regions) |
+| `aws-bedrock.hideMantleModelsFromNative` | boolean | `false` | Hide open-weight models from the native list when also available via Mantle |
+| `aws-bedrock.enableMantle` | boolean | `true` | Register the Mantle provider |
+| `aws-bedrock.mantleAuthMethod` | string | `apiKey` | Mantle auth mode: `apiKey` or `awsCredentials` |
+| `aws-bedrock.mantleAwsProfile` | string | empty | Optional AWS profile for Mantle when using AWS credentials |
+| `aws-bedrock.mantleRegion` | string | `us-east-1` | AWS region for Mantle (13 supported regions — a subset of native's) |
 | `aws-bedrock.sendTools` | boolean | `true` | Send tool definitions to the model |
 | `aws-bedrock.emitPlaceholders` | boolean | `true` | Emit placeholder text while waiting |
 | `aws-bedrock.enablePromptCaching` | boolean | `true` | Insert Bedrock `cachePoint` checkpoints for native Converse requests to Claude/Nova models |
@@ -205,53 +197,46 @@ Settings are grouped into sections in VS Code's Settings UI (search `aws-bedrock
 | `aws-bedrock.modelMetadataUrl` | string | default URL | External metadata registry URL (used when source is `litellm`) |
 | `aws-bedrock.modelMetadataCacheHours` | number | `24` | Cache duration for external metadata (used when source is `litellm`) |
 
-Note: setting keys and some command labels include `mantle` naming for backward compatibility.
-
 ### Supported Regions
 
-- `us-east-1` (N. Virginia) - Default
-- `us-east-2` (Ohio)
-- `us-west-1` (N. California)
-- `us-west-2` (Oregon)
-- `ca-central-1` (Canada Central)
-- `eu-west-1` (Ireland)
-- `eu-west-2` (London)
-- `eu-west-3` (Paris)
-- `eu-central-1` (Frankfurt)
-- `eu-north-1` (Stockholm)
-- `eu-south-1` (Milan)
-- `ap-south-1` (Mumbai)
-- `ap-northeast-1` (Tokyo)
-- `ap-northeast-2` (Seoul)
-- `ap-southeast-1` (Singapore)
-- `ap-southeast-2` (Sydney)
-- `ap-southeast-3` (Jakarta)
-- `sa-east-1` (São Paulo)
+**Native Bedrock** (`aws-bedrock.region`) — 18 regions:
+
+`us-east-1` (default), `us-east-2`, `us-west-1`, `us-west-2`, `ca-central-1`, `eu-west-1`, `eu-west-2`, `eu-west-3`, `eu-central-1`, `eu-north-1`, `eu-south-1`, `ap-south-1`, `ap-northeast-1`, `ap-northeast-2`, `ap-southeast-1`, `ap-southeast-2`, `ap-southeast-3`, `sa-east-1`
+
+**Mantle** (`aws-bedrock.mantleRegion`) — 13 regions, a strict subset of native's (missing `us-west-1`, `ca-central-1`, `eu-west-3`, `ap-northeast-2`, `ap-southeast-1`):
+
+`us-east-1` (default), `us-east-2`, `us-west-2`, `eu-west-1`, `eu-west-2`, `eu-central-1`, `eu-north-1`, `eu-south-1`, `ap-south-1`, `ap-northeast-1`, `ap-southeast-2`, `ap-southeast-3`, `sa-east-1`
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `Manage AWS Bedrock` | Configure authentication, AWS profile, region, and settings |
+| `Manage AWS Bedrock (Native)` | Configure AWS profile and region for native Bedrock |
+| `Manage AWS Bedrock Mantle` | Configure authentication, AWS profile, and region for Mantle |
 | `Clear AWS Bedrock API Key (Mantle)` | Remove stored AWS Bedrock API key |
 | `Show AWS Bedrock Logs` | Open the extension output channel |
 
 ## Architecture
 
-This extension implements VS Code's `LanguageModelChatProvider` interface using AWS Bedrock APIs.
+This extension registers **two** VS Code `LanguageModelChatProvider` implementations, because native Bedrock and Mantle are genuinely different AWS Bedrock endpoints with different region footprints, auth details, and model coverage.
 
 ### Key Components
 
-- **BedrockMantleProvider**: Main provider implementing the GitHub Copilot Chat provider interface
-- **Dynamic Model Discovery**: Fetches available model catalogs from AWS Bedrock APIs
-- **Streaming Support**: Processes SSE (Server-Sent Events) for real-time responses
+- **NativeBedrockProvider** (`src/provider.ts`): Native Bedrock (Converse API) provider, using `@aws-sdk/client-bedrock-runtime`
+- **MantleProvider** (`src/mantleProvider.ts`): Mantle provider — dispatches to Chat Completions (OpenAI-compatible) for most models, and to the Anthropic Messages API for the subset of Claude models Mantle supports
+- **Mantle Messages API client** (`src/mantleMessages.ts`): Request/response conversion and SSE streaming for Mantle's `/anthropic/v1/messages`
+- **Dynamic Model Discovery**: Fetches available model catalogs from AWS Bedrock APIs for both providers
+- **Streaming Support**: Processes SSE (Server-Sent Events) for real-time responses on all three API paths
 - **Tool Calling**: Buffers and parses streaming tool calls for function calling support
 
-### API Endpoint Format
+### API Endpoint Formats
 
 ```
-https://bedrock-mantle.<region>.api.aws/v1
+https://bedrock-mantle.<region>.api.aws/v1                    # Mantle: models list, Chat Completions
+https://bedrock-mantle.<region>.api.aws/anthropic/v1/messages # Mantle: Anthropic Messages API (Claude)
 ```
+
+Native Bedrock uses the AWS SDK (`@aws-sdk/client-bedrock` / `@aws-sdk/client-bedrock-runtime`) rather than a raw HTTP endpoint.
 
 ## Model Capabilities
 
@@ -264,6 +249,10 @@ Models with function calling capabilities:
 - `deepseek.v3.1`
 - `qwen3-235b` and larger models
 - `qwen3-vl-235b` (vision + tools)
+- All Anthropic Claude models (native Bedrock)
+- Amazon Nova, Cohere Command R/R+, AI21 Jamba (native Bedrock)
+
+> VS Code's Agent mode only shows models that report tool-calling support in the model picker — a model without it is hidden there entirely (though still usable in plain Ask-mode chat). If a model you expect to see is missing from Agent mode, it's most likely a tool-calling capability gap; please [open an issue](https://github.com/easytocloud/bedrock-vscode-chat/issues).
 
 ### Vision Support
 
@@ -275,8 +264,9 @@ Models with multimodal (image) input:
 ### Notes on Capability Metadata
 
 - **Token limits + initial capabilities**: By default the extension uses built-in heuristics only, with no external network calls. It can optionally use an external model metadata registry (litellm's public JSON) for more accurate limits on non-Claude Mantle models — set `aws-bedrock.modelMetadataSource` to `litellm` to enable it (also configurable via `aws-bedrock.modelMetadataUrl` and `aws-bedrock.modelMetadataCacheHours`). For Claude specifically, `aws-bedrock.assumeLongContextClaudeModels` (on by default) reports the correct 1M-token window for the specific models that support it, without needing the external registry.
-- **Converse API models**: vision is derived from `ListFoundationModels` input modalities (reliable). Tool support is verified on-demand by attempting a tool-enabled request and caching whether the model accepts tool config (this overrides external metadata if runtime behavior differs).
-- **API-key catalog models**: `/v1/models` does not include full tool/vision/token metadata, so the extension uses external metadata when enabled, plus runtime probing (tools) as a safety net.
+- **Native Bedrock models**: vision is derived from `ListFoundationModels` input modalities (reliable). Tool support is verified on-demand by attempting a tool-enabled request and caching whether the model accepts tool config (this overrides external metadata if runtime behavior differs).
+- **Mantle models**: `/v1/models` does not include full tool/vision/token metadata, so the extension uses external metadata when enabled, plus runtime probing (tools) as a safety net. Claude models on Mantle are routed to the Anthropic Messages API automatically; models with zero Mantle support (neither Chat Completions nor Messages) are excluded from the Mantle picker entirely.
+- **Duplicate names**: if two models in the same provider's list would otherwise show an identical label, the extension appends the raw technical model ID to keep every entry uniquely selectable.
 
 ### Code Specialization
 
@@ -297,7 +287,7 @@ Models with enhanced reasoning:
 
 **Solution**:
 1. Verify your API key in AWS Bedrock Console
-2. Run: `Manage AWS Bedrock` → "Clear API Key (Mantle)"
+2. Run: `Manage AWS Bedrock Mantle` → "Clear API Key"
 3. Re-enter your API key
 
 ### Model Not Available
@@ -366,11 +356,13 @@ make lint
 ```
 bedrock-vscode-chat/
 ├── src/
-│   ├── extension.ts           # Extension entry point
-│   ├── provider.ts             # Main provider implementation
-│   ├── bedrockNative.ts        # Native Bedrock Converse API
+│   ├── extension.ts           # Extension entry point; registers both providers
+│   ├── provider.ts             # NativeBedrockProvider (Converse API)
+│   ├── bedrockNative.ts        # Native Bedrock Converse API client
+│   ├── mantleProvider.ts        # MantleProvider (Chat Completions + Messages dispatch)
+│   ├── mantleMessages.ts        # Mantle Anthropic Messages API client
 │   ├── externalModelMetadata.ts # External model metadata loader
-│   ├── regions.ts               # AWS region list (single source of truth)
+│   ├── regions.ts               # AWS region lists (native + Mantle, single source of truth)
 │   ├── types.ts                # TypeScript type definitions
 │   └── utils.ts                # Utility functions
 ├── package.json                # Extension manifest
@@ -429,6 +421,6 @@ Inspired by the [HuggingFace extension for GitHub Copilot Chat](https://github.c
 
 ---
 
-**Version**: 0.4.0  
+**Version**: 0.5.0  
 **Status**: Production
 **Last Updated**: July 11, 2026
