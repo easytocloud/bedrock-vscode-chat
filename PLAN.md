@@ -39,17 +39,23 @@ Build a VS Code extension that integrates AWS Bedrock models via Mantle's OpenAI
 
 **Base URL Pattern**: `https://bedrock-mantle.<region>.api.aws/v1`
 
-**Supported Regions**:
+**Supported Regions** (see `src/regions.ts` for the source of truth):
 - us-east-1 (N. Virginia) - Default
 - us-east-2 (Ohio)
+- us-west-1 (N. California)
 - us-west-2 (Oregon)
+- ca-central-1 (Canada Central)
 - eu-west-1 (Ireland)
 - eu-west-2 (London)
+- eu-west-3 (Paris)
 - eu-central-1 (Frankfurt)
 - eu-north-1 (Stockholm)
 - eu-south-1 (Milan)
 - ap-south-1 (Mumbai)
 - ap-northeast-1 (Tokyo)
+- ap-northeast-2 (Seoul)
+- ap-southeast-1 (Singapore)
+- ap-southeast-2 (Sydney)
 - ap-southeast-3 (Jakarta)
 - sa-east-1 (São Paulo)
 

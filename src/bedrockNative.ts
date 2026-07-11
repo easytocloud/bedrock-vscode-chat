@@ -10,6 +10,7 @@ import {
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
 import type { ParsedModelInfo } from "./types";
+import { inferModelCapabilities, inferTokenLimits } from "./utils";
 
 function getCredentials(profile: string | undefined) {
 	const trimmed = (profile ?? "").trim();
@@ -165,11 +166,85 @@ async function resolveInferenceProfileIdentifierForModel(options: {
 	return { identifier, source: "lookup" };
 }
 
+function extractModelIdFromArn(arn: string): string | undefined {
+	// Typical shape: arn:aws:bedrock:<region>::foundation-model/<modelId>
+	const marker = "foundation-model/";
+	const idx = arn.indexOf(marker);
+	return idx === -1 ? undefined : arn.slice(idx + marker.length);
+}
+
+/**
+ * Lists every inference profile once and returns, for each model ID contained in any
+ * profile, the best-scoring profile identifier. Used at model-discovery time so we know
+ * upfront which models require an inference profile instead of discovering it via a
+ * failed on-demand Converse call on the user's first message with that model.
+ */
+async function listInferenceProfileModelMap(options: {
+	region: string;
+	awsProfile: string | undefined;
+	userAgent: string;
+}): Promise<Map<string, { identifier: string; name?: string }>> {
+	const credentials = getCredentials(options.awsProfile);
+	const client = new BedrockClient({
+		region: options.region,
+		credentials,
+		customUserAgent: buildUserAgentFragment(options.userAgent),
+	});
+
+	const best = new Map<string, { identifier: string; name?: string; score: number }>();
+	let nextToken: string | undefined;
+
+	do {
+		const resp = await client.send(
+			new ListInferenceProfilesCommand({
+				maxResults: 100,
+				nextToken,
+			})
+		);
+		const profiles: any[] = Array.isArray((resp as any)?.inferenceProfileSummaries)
+			? ((resp as any).inferenceProfileSummaries as any[])
+			: [];
+
+		for (const p of profiles) {
+			const identifier: string | undefined =
+				(typeof p?.inferenceProfileArn === "string" && p.inferenceProfileArn) ||
+				(typeof p?.inferenceProfileId === "string" && p.inferenceProfileId) ||
+				undefined;
+			if (!identifier) {
+				continue;
+			}
+			const score = scoreInferenceProfile(p);
+			const profileModels: any[] = Array.isArray(p?.models) ? p.models : [];
+			for (const pm of profileModels) {
+				const modelId = typeof pm?.modelArn === "string" ? extractModelIdFromArn(pm.modelArn) : undefined;
+				if (!modelId) {
+					continue;
+				}
+				const existing = best.get(modelId);
+				if (!existing || score > existing.score) {
+					best.set(modelId, { identifier, name: p?.inferenceProfileName, score });
+				}
+			}
+		}
+
+		nextToken = (resp as any)?.nextToken;
+	} while (nextToken);
+
+	const out = new Map<string, { identifier: string; name?: string }>();
+	for (const [modelId, v] of best) {
+		out.set(modelId, { identifier: v.identifier, name: v.name });
+	}
+	return out;
+}
+
 export async function listNativeBedrockModels(options: {
 	region: string;
 	awsProfile: string | undefined;
 	userAgent: string;
 	showAllModels: boolean;
+	assumeLongContextClaudeModels?: boolean;
+	globalState?: vscode.Memento;
+	log?: (message: string) => void;
 }): Promise<ParsedModelInfo[]> {
 	const credentials = getCredentials(options.awsProfile);
 	const client = new BedrockClient({
@@ -178,7 +253,19 @@ export async function listNativeBedrockModels(options: {
 		customUserAgent: buildUserAgentFragment(options.userAgent),
 	});
 
-	const resp = await client.send(new ListFoundationModelsCommand({}));
+	const [resp, profileMap] = await Promise.all([
+		client.send(new ListFoundationModelsCommand({})),
+		listInferenceProfileModelMap({
+			region: options.region,
+			awsProfile: options.awsProfile,
+			userAgent: options.userAgent,
+		}).catch((e) => {
+			options.log?.(
+				`Failed to list inference profiles during model discovery (will fall back to reactive resolution): ${e instanceof Error ? e.message : String(e)}`
+			);
+			return new Map<string, { identifier: string; name?: string }>();
+		}),
+	]);
 	const summaries = resp.modelSummaries ?? [];
 
 	const models: ParsedModelInfo[] = summaries
@@ -206,14 +293,31 @@ export async function listNativeBedrockModels(options: {
 
 			const displayName = `${provider} ${modelName}`.replace(/\s+/g, " ").trim();
 
-			// Import capability inference from utils
-			const { inferModelCapabilities, inferTokenLimits } = require("./utils");
-
 			// Infer capabilities from model ID patterns
 			// Tool support is not in ListFoundationModels API, so we use heuristics.
 			// Runtime probing in the provider will cache the actual truth per-model.
 			const inferredCaps = inferModelCapabilities(rawModelId);
-			const { contextLength, maxOutputTokens } = inferTokenLimits(rawModelId);
+			const { contextLength, maxOutputTokens } = inferTokenLimits(rawModelId, {
+				assumeLongContextClaudeModels: options.assumeLongContextClaudeModels,
+			});
+
+			// If discovery found an inference profile containing this model, prewarm the
+			// resolution cache so the first Converse call for it doesn't have to fail an
+			// on-demand attempt before falling back — see converseOnce()'s
+			// requiresInferenceProfile fast path.
+			const profileMatch = profileMap.get(rawModelId);
+			if (profileMatch && options.globalState) {
+				const key = inferenceProfileCacheKey(options.region, options.awsProfile, rawModelId);
+				const value: CachedInferenceProfile = {
+					identifier: profileMatch.identifier,
+					modelId: rawModelId,
+					region: options.region,
+					awsProfile: options.awsProfile,
+					inferenceProfileName: profileMatch.name,
+					cachedAt: Date.now(),
+				};
+				void options.globalState.update(key, value);
+			}
 
 			return {
 				id: `bedrock:${rawModelId}`,
@@ -232,6 +336,7 @@ export async function listNativeBedrockModels(options: {
 					isCodeSpecialized: inferredCaps.isCodeSpecialized,
 					isThinking: inferredCaps.isThinking,
 				},
+				requiresInferenceProfile: !!profileMatch,
 			};
 		});
 
@@ -261,7 +366,7 @@ function hasToolHistory(messages: readonly vscode.LanguageModelChatRequestMessag
 
 function convertVscodeMessagesToBedrock(
 	messages: readonly vscode.LanguageModelChatRequestMessage[],
-	options: { allowToolBlocks: boolean }
+	options: { allowToolBlocks: boolean; includeCachePoint: boolean }
 ): { system: undefined; messages: Message[] } {
 	const outMessages: Message[] = [];
 
@@ -347,6 +452,16 @@ function convertVscodeMessagesToBedrock(
 		outMessages.push({ role, content: blocks });
 	}
 
+	// Mark a cache checkpoint at the end of the second-to-last message, i.e. everything
+	// except the newest turn. That prefix is identical to what was sent last turn, so on
+	// each subsequent request Bedrock can reuse the cached prefix instead of reprocessing
+	// the whole (ever-growing) conversation history. Below Anthropic's per-model minimum
+	// token count this is simply a no-op, not an error, so it's safe to always attempt.
+	if (options.includeCachePoint && outMessages.length >= 2) {
+		const target = outMessages[outMessages.length - 2];
+		target.content = [...(target.content ?? []), { cachePoint: { type: "default" } }];
+	}
+
 	return {
 		system: undefined,
 		messages: outMessages,
@@ -363,13 +478,14 @@ function safeStringify(value: unknown): string {
 }
 
 export function convertVscodeToolsToBedrockToolConfig(
-	tools: readonly vscode.LanguageModelChatTool[] | undefined
+	tools: readonly vscode.LanguageModelChatTool[] | undefined,
+	options: { includeCachePoint: boolean } = { includeCachePoint: false }
 ): ToolConfiguration | undefined {
 	if (!tools || tools.length === 0) {
 		return undefined;
 	}
 
-	const convertedTools = tools
+	const convertedTools: ToolConfiguration["tools"] = tools
 		.filter((t) => t.name) // Filter out tools without names
 		.map((t) => {
 			// Bedrock requires a non-empty inputSchema. Provide a minimal valid schema if missing.
@@ -392,6 +508,13 @@ export function convertVscodeToolsToBedrockToolConfig(
 		return undefined;
 	}
 
+	// Tool definitions are re-sent verbatim on every single turn and can be large
+	// (see safeStringify's truncation for logging). Caching them avoids reprocessing
+	// the same schema blob on every request for models that support prompt caching.
+	if (options.includeCachePoint) {
+		convertedTools.push({ cachePoint: { type: "default" } });
+	}
+
 	return { tools: convertedTools };
 }
 
@@ -400,13 +523,26 @@ export async function converseOnce(options: {
 	awsProfile: string | undefined;
 	userAgent: string;
 	modelId: string;
+	/**
+	 * Set when model discovery already determined (via ListInferenceProfiles) that this
+	 * model is only reachable through a cross-region inference profile. Skips the doomed
+	 * on-demand attempt and resolves the profile directly (typically served from the cache
+	 * discovery prewarmed) instead of learning this reactively from a failed request.
+	 */
+	requiresInferenceProfile?: boolean;
+	/** Whether to insert Bedrock prompt-cache checkpoints. Ignored for model families that don't support it. */
+	enablePromptCaching?: boolean;
 	messages: readonly vscode.LanguageModelChatRequestMessage[];
 	tools: readonly vscode.LanguageModelChatTool[] | undefined;
 	temperature?: number;
 	maxTokens?: number;
 	globalState?: vscode.Memento;
 	log?: (message: string) => void;
-}): Promise<{ text: string; toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }> }> {
+}): Promise<{
+	text: string;
+	toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }>;
+	reasoning?: string;
+}> {
 	const credentials = getCredentials(options.awsProfile);
 	const runtime = new BedrockRuntimeClient({
 		region: options.region,
@@ -414,14 +550,20 @@ export async function converseOnce(options: {
 		customUserAgent: buildUserAgentFragment(options.userAgent),
 	});
 
-	const toolConfig = convertVscodeToolsToBedrockToolConfig(options.tools);
+	// Prompt caching (cachePoint) is only supported by Anthropic Claude and Amazon Nova
+	// models on Bedrock today; other families (Llama, Mistral, DeepSeek, Qwen, ...) reject
+	// the field. Gate on the model family rather than sending it unconditionally.
+	const modelFamilySupportsCaching = /anthropic\.claude|amazon\.nova/i.test(options.modelId);
+	const includeCachePoint = (options.enablePromptCaching ?? true) && modelFamilySupportsCaching;
+
+	const toolConfig = convertVscodeToolsToBedrockToolConfig(options.tools, { includeCachePoint });
 	// IMPORTANT: Always preserve tool history (toolUse/toolResult blocks) from message history,
 	// even if the current request doesn't include tools. Bedrock API requires that if a previous
 	// toolUse block exists in the history, its corresponding toolResult block must also be present.
 	// Stripping tool results would cause validation errors like:
 	// "Expected toolResult blocks at messages.43.content for the following Ids: ..."
 	const hasTools = !!toolConfig || hasToolHistory(options.messages);
-	const converted = convertVscodeMessagesToBedrock(options.messages, { allowToolBlocks: hasTools });
+	const converted = convertVscodeMessagesToBedrock(options.messages, { allowToolBlocks: hasTools, includeCachePoint });
 
 	const sendConverse = async (modelId: string) => {
 		return runtime.send(
@@ -446,18 +588,42 @@ export async function converseOnce(options: {
 		);
 	}
 
-	let resp: Awaited<ReturnType<typeof sendConverse>>;
-	try {
-		resp = await sendConverse(options.modelId);
-	} catch (err) {
-		if (!looksLikeInferenceProfileRequiredError(err)) {
-			throw err;
+	// Shared "use this resolved profile, and if a *cached* identifier turns out to be
+	// stale, refresh once and retry" logic used by both the proactive and reactive paths.
+	const sendViaResolvedProfile = async (
+		resolution: InferenceProfileResolution
+	): Promise<Awaited<ReturnType<typeof sendConverse>>> => {
+		try {
+			return await sendConverse(resolution.identifier);
+		} catch (retryErr) {
+			if (resolution.source !== "cache" || !options.globalState) {
+				throw retryErr;
+			}
+			options.log?.(
+				`Cached inference profile failed for ${options.modelId}; refreshing inference profile mapping and retrying once...`
+			);
+			const refreshed = await resolveInferenceProfileIdentifierForModel({
+				region: options.region,
+				awsProfile: options.awsProfile,
+				userAgent: options.userAgent,
+				modelId: options.modelId,
+				globalState: options.globalState,
+				log: options.log,
+				forceRefresh: true,
+			});
+			if (!refreshed) {
+				throw retryErr;
+			}
+			return sendConverse(refreshed.identifier);
 		}
+	};
 
-		options.log?.(
-			`Model ${options.modelId} requires an inference profile; attempting automatic inference-profile fallback...`
-		);
+	let resp: Awaited<ReturnType<typeof sendConverse>>;
 
+	if (options.requiresInferenceProfile) {
+		// Discovery already told us this model needs a profile — resolve it directly
+		// (served from the prewarmed cache in the common case) instead of making a
+		// request we already know will fail.
 		const resolution = await resolveInferenceProfileIdentifierForModel({
 			region: options.region,
 			awsProfile: options.awsProfile,
@@ -466,40 +632,40 @@ export async function converseOnce(options: {
 			globalState: options.globalState,
 			log: options.log,
 		});
-		if (!resolution) {
-			throw err;
-		}
-
+		resp = resolution
+			? await sendViaResolvedProfile(resolution)
+			: await sendConverse(options.modelId);
+	} else {
 		try {
-			resp = await sendConverse(resolution.identifier);
-		} catch (retryErr) {
-			// If we used a cached identifier and it failed, refresh once and retry.
-			if (resolution.source === "cache" && options.globalState) {
-				options.log?.(
-					`Cached inference profile failed for ${options.modelId}; refreshing inference profile mapping and retrying once...`
-				);
-				const refreshed = await resolveInferenceProfileIdentifierForModel({
-					region: options.region,
-					awsProfile: options.awsProfile,
-					userAgent: options.userAgent,
-					modelId: options.modelId,
-					globalState: options.globalState,
-					log: options.log,
-					forceRefresh: true,
-				});
-				if (refreshed) {
-					resp = await sendConverse(refreshed.identifier);
-				} else {
-					throw retryErr;
-				}
-			} else {
-				throw retryErr;
+			resp = await sendConverse(options.modelId);
+		} catch (err) {
+			if (!looksLikeInferenceProfileRequiredError(err)) {
+				throw err;
 			}
+
+			options.log?.(
+				`Model ${options.modelId} requires an inference profile; attempting automatic inference-profile fallback...`
+			);
+
+			const resolution = await resolveInferenceProfileIdentifierForModel({
+				region: options.region,
+				awsProfile: options.awsProfile,
+				userAgent: options.userAgent,
+				modelId: options.modelId,
+				globalState: options.globalState,
+				log: options.log,
+			});
+			if (!resolution) {
+				throw err;
+			}
+
+			resp = await sendViaResolvedProfile(resolution);
 		}
 	}
 
 	const content = resp.output?.message?.content ?? [];
 	let text = "";
+	let reasoning = "";
 	const toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
 	for (const block of content) {
@@ -511,8 +677,25 @@ export async function converseOnce(options: {
 				name: block.toolUse.name ?? "tool",
 				input: (block.toolUse.input ?? {}) as Record<string, unknown>,
 			});
+		} else if (block.reasoningContent) {
+			// Extended-thinking output. VS Code's stable LanguageModelChatProvider API has no
+			// dedicated response part for reasoning (only text/toolCall/toolResult/data), and
+			// no way to round-trip a reasoning block back into a later request's history — so
+			// we deliberately never *request* thinking (no additionalModelRequestFields) and
+			// don't try to fake multi-turn replay of it here. We still surface it defensively:
+			// if a model or account-level default ever returns reasoningContent anyway, log it
+			// instead of silently discarding it, and let the caller decide whether to show a
+			// placeholder when it's the only content in the response.
+			const reasoningText = block.reasoningContent.reasoningText?.text;
+			if (reasoningText) {
+				reasoning += reasoningText;
+			}
 		}
 	}
 
-	return { text, toolUses };
+	if (reasoning) {
+		options.log?.(`converseOnce: response included reasoningContent (${reasoning.length} chars)`);
+	}
+
+	return { text, toolUses, reasoning: reasoning || undefined };
 }

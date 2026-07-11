@@ -12,7 +12,7 @@ Use AWS Bedrock models directly in GitHub Copilot Chat, including Claude, Llama,
 - **Keep code and prompts in your AWS account** for stronger governance
 - **Choose your AWS region** to align with residency and compliance requirements
 - **Streaming + tool calling** for responsive coding workflows
-- **Multi-region support** across 12 AWS regions
+- **Multi-region support** across 18 AWS regions
 
 ## Why This Extension
 
@@ -185,21 +185,25 @@ Assistant (via Bedrock): [Streams response in real-time...]
 
 ### Settings
 
+Settings are grouped into sections in VS Code's Settings UI (search `aws-bedrock`): **AWS Bedrock**, **› Mantle**, **› Native**, **› Chat Behavior**, and **› Model Metadata**.
+
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `aws-bedrock.region` | string | `us-east-1` | AWS region for Bedrock requests |
-| `aws-bedrock.enableMantle` | boolean | `true` | Enable models available through API key mode |
-| `aws-bedrock.enableNative` | boolean | `true` | Enable models available through Converse API |
-| `aws-bedrock.mantleAuthMethod` | string | `apiKey` | Auth mode for API key path: apiKey or awsCredentials |
-| `aws-bedrock.mantleAwsProfile` | string | empty | Optional AWS profile for API key path when using credentials |
-| `aws-bedrock.awsProfile` | string | empty | Optional AWS profile for Converse API path |
 | `aws-bedrock.showAllModels` | boolean | `true` | Show all models including specialized variants |
 | `aws-bedrock.debugLogging` | boolean | `false` | Enable verbose debug logging |
+| `aws-bedrock.enableMantle` | boolean | `true` | Enable models available through API key mode |
+| `aws-bedrock.mantleAuthMethod` | string | `apiKey` | Auth mode for API key path: apiKey or awsCredentials |
+| `aws-bedrock.mantleAwsProfile` | string | empty | Optional AWS profile for API key path when using credentials |
+| `aws-bedrock.enableNative` | boolean | `true` | Enable models available through Converse API |
+| `aws-bedrock.awsProfile` | string | empty | Optional AWS profile for Converse API path |
 | `aws-bedrock.sendTools` | boolean | `true` | Send tool definitions to the model |
 | `aws-bedrock.emitPlaceholders` | boolean | `true` | Emit placeholder text while waiting |
-| `aws-bedrock.modelMetadataSource` | string | `litellm` | Metadata source for token/capability info |
-| `aws-bedrock.modelMetadataUrl` | string | default URL | External metadata registry URL |
-| `aws-bedrock.modelMetadataCacheHours` | number | `24` | Cache duration for external metadata |
+| `aws-bedrock.enablePromptCaching` | boolean | `true` | Insert Bedrock `cachePoint` checkpoints for native Converse requests to Claude/Nova models |
+| `aws-bedrock.assumeLongContextClaudeModels` | boolean | `true` | Report a 1M-token context window for Claude models known to support it (Sonnet 4, Sonnet 4.6, Sonnet 5, Opus 4.6+) |
+| `aws-bedrock.modelMetadataSource` | string | `none` | Metadata source for token/capability info: `none` (built-in heuristics only, no network calls) or `litellm` |
+| `aws-bedrock.modelMetadataUrl` | string | default URL | External metadata registry URL (used when source is `litellm`) |
+| `aws-bedrock.modelMetadataCacheHours` | number | `24` | Cache duration for external metadata (used when source is `litellm`) |
 
 Note: setting keys and some command labels include `mantle` naming for backward compatibility.
 
@@ -207,14 +211,20 @@ Note: setting keys and some command labels include `mantle` naming for backward 
 
 - `us-east-1` (N. Virginia) - Default
 - `us-east-2` (Ohio)
+- `us-west-1` (N. California)
 - `us-west-2` (Oregon)
+- `ca-central-1` (Canada Central)
 - `eu-west-1` (Ireland)
 - `eu-west-2` (London)
+- `eu-west-3` (Paris)
 - `eu-central-1` (Frankfurt)
 - `eu-north-1` (Stockholm)
 - `eu-south-1` (Milan)
 - `ap-south-1` (Mumbai)
 - `ap-northeast-1` (Tokyo)
+- `ap-northeast-2` (Seoul)
+- `ap-southeast-1` (Singapore)
+- `ap-southeast-2` (Sydney)
 - `ap-southeast-3` (Jakarta)
 - `sa-east-1` (São Paulo)
 
@@ -264,7 +274,7 @@ Models with multimodal (image) input:
 
 ### Notes on Capability Metadata
 
-- **Token limits + initial capabilities**: The extension can optionally use an external model metadata registry (default: Litellm's public JSON) to populate `maxInputTokens`, `maxOutputTokens`, and initial tool/vision flags. Configure via `aws-bedrock.modelMetadataSource`, `aws-bedrock.modelMetadataUrl`, and `aws-bedrock.modelMetadataCacheHours`.
+- **Token limits + initial capabilities**: By default the extension uses built-in heuristics only, with no external network calls. It can optionally use an external model metadata registry (litellm's public JSON) for more accurate limits on non-Claude Mantle models — set `aws-bedrock.modelMetadataSource` to `litellm` to enable it (also configurable via `aws-bedrock.modelMetadataUrl` and `aws-bedrock.modelMetadataCacheHours`). For Claude specifically, `aws-bedrock.assumeLongContextClaudeModels` (on by default) reports the correct 1M-token window for the specific models that support it, without needing the external registry.
 - **Converse API models**: vision is derived from `ListFoundationModels` input modalities (reliable). Tool support is verified on-demand by attempting a tool-enabled request and caching whether the model accepts tool config (this overrides external metadata if runtime behavior differs).
 - **API-key catalog models**: `/v1/models` does not include full tool/vision/token metadata, so the extension uses external metadata when enabled, plus runtime probing (tools) as a safety net.
 
@@ -360,6 +370,7 @@ bedrock-vscode-chat/
 │   ├── provider.ts             # Main provider implementation
 │   ├── bedrockNative.ts        # Native Bedrock Converse API
 │   ├── externalModelMetadata.ts # External model metadata loader
+│   ├── regions.ts               # AWS region list (single source of truth)
 │   ├── types.ts                # TypeScript type definitions
 │   └── utils.ts                # Utility functions
 ├── package.json                # Extension manifest
@@ -418,6 +429,6 @@ Inspired by the [HuggingFace extension for GitHub Copilot Chat](https://github.c
 
 ---
 
-**Version**: 0.3.1  
+**Version**: 0.4.0  
 **Status**: Production
-**Last Updated**: February 5, 2026
+**Last Updated**: July 11, 2026

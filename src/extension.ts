@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode";
 import { BedrockMantleProvider } from "./provider";
+import { AWS_BEDROCK_REGIONS } from "./regions";
 
 export function activate(context: vscode.ExtensionContext) {
 	const output = vscode.window.createOutputChannel("AWS Bedrock");
@@ -181,20 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			case "region": {
-				const regions = [
-					{ label: "US East (N. Virginia)", value: "us-east-1" },
-					{ label: "US East (Ohio)", value: "us-east-2" },
-					{ label: "US West (Oregon)", value: "us-west-2" },
-					{ label: "Europe (Ireland)", value: "eu-west-1" },
-					{ label: "Europe (London)", value: "eu-west-2" },
-					{ label: "Europe (Frankfurt)", value: "eu-central-1" },
-					{ label: "Europe (Stockholm)", value: "eu-north-1" },
-					{ label: "Europe (Milan)", value: "eu-south-1" },
-					{ label: "Asia Pacific (Mumbai)", value: "ap-south-1" },
-					{ label: "Asia Pacific (Tokyo)", value: "ap-northeast-1" },
-					{ label: "Asia Pacific (Jakarta)", value: "ap-southeast-3" },
-					{ label: "South America (São Paulo)", value: "sa-east-1" },
-				];
+				const regions = AWS_BEDROCK_REGIONS.map((r) => ({ label: r.label, value: r.value }));
 
 				const currentRegion = config.get<string>("region", "us-east-1");
 				const selected = await vscode.window.showQuickPick(regions, {

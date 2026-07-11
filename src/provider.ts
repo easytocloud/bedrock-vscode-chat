@@ -47,7 +47,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 	) {}
 
 	private externalMetadataSource(): string {
-		return this.config.get<string>("modelMetadataSource", "litellm");
+		return this.config.get<string>("modelMetadataSource", "none");
 	}
 
 	private externalMetadataUrl(): string {
@@ -130,6 +130,14 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 
 	private shouldEmitPlaceholders(): boolean {
 		return this.config.get<boolean>("emitPlaceholders", false);
+	}
+
+	private shouldEnablePromptCaching(): boolean {
+		return this.config.get<boolean>("enablePromptCaching", true);
+	}
+
+	private shouldAssumeLongContextClaudeModels(): boolean {
+		return this.config.get<boolean>("assumeLongContextClaudeModels", true);
 	}
 
 	private isMantleEnabled(): boolean {
@@ -222,17 +230,8 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 	}
 
 	/**
-	 * Prepare available language models (called during initial discovery)
-	 */
-	async prepareLanguageModelChatInformation(
-		options: { silent: boolean },
-		token: vscode.CancellationToken
-	): Promise<vscode.LanguageModelChatInformation[]> {
-		return this.fetchModels(options, token);
-	}
-
-	/**
-	 * Provide available language models (called when user requests model list)
+	 * Provide available language models (called by VS Code for both initial discovery
+	 * and subsequent refreshes; there is no separate "prepare" hook in the current API).
 	 */
 	async provideLanguageModelChatInformation(
 		options: { silent: boolean },
@@ -316,7 +315,9 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 						}
 					} else {
 						const data = (await response.json()) as ModelsListResponse;
-						const parsedModels = data.data.map((model) => parseModelInfo(model.id));
+						const parsedModels = data.data.map((model) =>
+						parseModelInfo(model.id, { assumeLongContextClaudeModels: this.shouldAssumeLongContextClaudeModels() })
+					);
 						const mantleModels = (showAllModels
 							? parsedModels
 							: parsedModels.filter((m) => !m.id.includes("safeguard")))
@@ -349,6 +350,9 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 					awsProfile: this.awsProfile(),
 					userAgent: this.userAgent,
 					showAllModels,
+					assumeLongContextClaudeModels: this.shouldAssumeLongContextClaudeModels(),
+					globalState: this.globalState,
+					log: (m) => this.logDebug(m),
 				});
 				// Apply cached tool support probing results.
 				for (const m of nativeModels) {
@@ -413,7 +417,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 		if (explicitMaxInput && explicitMaxInput > 0) {
 			return {
 				id: model.id,
-				name: model.backend === "bedrock" ? `${model.displayName} (Native)` : `${model.displayName} (Mantle)`,
+				name: model.backend === "bedrock" ? `${model.displayName} (Bedrock)` : `${model.displayName} (Mantle)`,
 				family: "aws-bedrock",
 				version: "1.0.0",
 				tooltip:
@@ -436,7 +440,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 
 		return {
 			id: model.id,
-			name: model.backend === "bedrock" ? `${model.displayName} (Native)` : `${model.displayName} (Mantle)`,
+			name: model.backend === "bedrock" ? `${model.displayName} (Bedrock)` : `${model.displayName} (Mantle)`,
 			family: "aws-bedrock",
 			version: "1.0.0",
 			tooltip: model.backend === "bedrock" ? "AWS Bedrock (native Converse API)" : "AWS Bedrock via Mantle (OpenAI-compatible)",
@@ -455,6 +459,28 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 	refresh(): void {
 		this._models = null;
 		this._onDidChangeLanguageModelChatInformation.fire();
+	}
+
+	/**
+	 * Report a native Converse response's text and tool calls to VS Code. If the model
+	 * only returned reasoning content (no text, no tool calls — possible if thinking is
+	 * ever returned by account/model defaults even though we never request it, since VS
+	 * Code's stable chat provider API has no part type to surface it properly), emit a
+	 * lightweight placeholder so the turn doesn't look like an empty/stuck response.
+	 */
+	private reportNativeResponse(
+		resp: { text: string; toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }>; reasoning?: string },
+		progress: vscode.Progress<vscode.LanguageModelResponsePart>
+	): void {
+		if (resp.text) {
+			progress.report(new vscode.LanguageModelTextPart(resp.text));
+		}
+		for (const toolUse of resp.toolUses) {
+			progress.report(new vscode.LanguageModelToolCallPart(toolUse.id, toolUse.name, toolUse.input));
+		}
+		if (!resp.text && resp.toolUses.length === 0 && resp.reasoning && this.shouldEmitPlaceholders()) {
+			progress.report(new vscode.LanguageModelTextPart("Thinking…"));
+		}
 	}
 
 	/**
@@ -493,6 +519,8 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 					awsProfile: this.awsProfile(),
 					userAgent: this.userAgent,
 					modelId: parsed?.modelId ?? model.id,
+					requiresInferenceProfile: parsed?.requiresInferenceProfile,
+					enablePromptCaching: this.shouldEnablePromptCaching(),
 					messages,
 					tools: toolsToSend,
 					temperature,
@@ -501,12 +529,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 					log: (m) => this.logAlways(m),
 				});
 
-				if (resp.text) {
-					progress.report(new vscode.LanguageModelTextPart(resp.text));
-				}
-				for (const toolUse of resp.toolUses) {
-					progress.report(new vscode.LanguageModelToolCallPart(toolUse.id, toolUse.name, toolUse.input));
-				}
+				this.reportNativeResponse(resp, progress);
 
 				// If we successfully sent tools, mark tool calling as supported for this model.
 				if (toolsToSend && toolsToSend.length > 0) {
@@ -538,6 +561,8 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 						awsProfile: this.awsProfile(),
 						userAgent: this.userAgent,
 						modelId: parsed?.modelId ?? model.id,
+						requiresInferenceProfile: parsed?.requiresInferenceProfile,
+						enablePromptCaching: this.shouldEnablePromptCaching(),
 						messages,
 						tools: undefined,
 						temperature,
@@ -545,12 +570,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 						globalState: this.globalState,
 						log: (m) => this.logAlways(m),
 					});
-					if (resp.text) {
-						progress.report(new vscode.LanguageModelTextPart(resp.text));
-					}
-					for (const toolUse of resp.toolUses) {
-						progress.report(new vscode.LanguageModelToolCallPart(toolUse.id, toolUse.name, toolUse.input));
-					}
+					this.reportNativeResponse(resp, progress);
 					return;
 				}
 
@@ -773,7 +793,7 @@ export class BedrockMantleProvider implements vscode.LanguageModelChatProvider {
 	 * Provide token count estimation
 	 */
 	async provideTokenCount(
-		model: vscode.LanguageModelChatInformation,
+		_model: vscode.LanguageModelChatInformation,
 		text: string | vscode.LanguageModelChatMessage,
 		_token: vscode.CancellationToken
 	): Promise<number> {

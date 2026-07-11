@@ -280,7 +280,7 @@ The extension supports two backends:
 2. **Native Bedrock** (Converse API)
    - Uses AWS credentials (SDK)
    - Supports AWS profiles
-   - Models marked as "(Native)" in picker
+   - Models marked as "(Bedrock)" in picker
 
 ## Troubleshooting Common Issues
 

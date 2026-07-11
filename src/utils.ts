@@ -246,20 +246,59 @@ export function inferModelCapabilities(modelId: string): ModelCapabilities {
 }
 
 /**
+ * Claude models known to support a 1M-token context window. This is NOT a function of
+ * generation number — e.g. sonnet-4 and sonnet-4-6 support 1M but sonnet-4-5 (released
+ * between them) is capped at 200K — so it can't be derived from a numeric-version regex
+ * and has to be a maintained list. Cross-checked against litellm's registry (BerriAI/litellm
+ * model_prices_and_context_window.json) on 2026-07-11; update this list when a new Claude
+ * release changes its context window, since aws-bedrock.modelMetadataSource defaults to
+ * "none" and won't fetch that registry automatically.
+ */
+const LONG_CONTEXT_CLAUDE_MODELS: Array<{ pattern: string; maxOutputTokens: number }> = [
+	{ pattern: "claude-sonnet-4-20250514", maxOutputTokens: 64000 },
+	{ pattern: "claude-sonnet-4-6", maxOutputTokens: 64000 },
+	{ pattern: "claude-sonnet-5", maxOutputTokens: 128000 },
+	{ pattern: "claude-opus-4-6", maxOutputTokens: 128000 },
+	{ pattern: "claude-opus-4-7", maxOutputTokens: 128000 },
+	{ pattern: "claude-opus-4-8", maxOutputTokens: 128000 },
+];
+
+/**
  * Infer token limits from model ID patterns
  */
-export function inferTokenLimits(modelId: string): { contextLength: number; maxOutputTokens: number } {
+export function inferTokenLimits(
+	modelId: string,
+	options: { assumeLongContextClaudeModels?: boolean } = {}
+): { contextLength: number; maxOutputTokens: number } {
 	const lowerModelId = modelId.toLowerCase();
+	const assumeLongContext = options.assumeLongContextClaudeModels ?? true;
 
-	// Claude models
+	// Claude models. Bedrock model IDs may carry a cross-region inference-profile
+	// prefix (us./eu./apac./jp./au./global.) before "anthropic.claude-...", so we
+	// match on "claude" anywhere rather than requiring it at the start.
 	if (lowerModelId.includes("claude")) {
-		if (lowerModelId.includes("3-5") || lowerModelId.includes("3.5")) {
+		if (lowerModelId.includes("claude-3-7") || lowerModelId.includes("claude-3.7")) {
+			// Claude 3.7 Sonnet supports extended (up to 64K) output via the Converse API.
+			return { contextLength: 200000, maxOutputTokens: 64000 };
+		}
+		if (lowerModelId.includes("claude-3-5") || lowerModelId.includes("claude-3.5")) {
 			return { contextLength: 200000, maxOutputTokens: 8192 };
 		}
 		if (lowerModelId.includes("claude-3")) {
 			return { contextLength: 200000, maxOutputTokens: 4096 };
 		}
-		return { contextLength: 100000, maxOutputTokens: 4096 };
+		const longContext = assumeLongContext
+			? LONG_CONTEXT_CLAUDE_MODELS.find((m) => lowerModelId.includes(m.pattern))
+			: undefined;
+		if (longContext) {
+			return { contextLength: 1000000, maxOutputTokens: longContext.maxOutputTokens };
+		}
+		// Anything else with "claude" in the ID is Claude 4.x/5.x or newer (e.g.
+		// claude-opus-4-5, claude-haiku-4-5). Rather than falling back to a conservative
+		// non-Claude default (which silently truncated every current-generation model to
+		// 100K/4096), assume the modern generous limits these models actually ship with.
+		// This will still be overridden by external metadata (litellm) when enabled.
+		return { contextLength: 200000, maxOutputTokens: 64000 };
 	}
 
 	// Mistral/Mixtral models
@@ -300,7 +339,10 @@ export function inferTokenLimits(modelId: string): { contextLength: number; maxO
 /**
  * Parse model ID into components and create display name
  */
-export function parseModelInfo(modelId: string): ParsedModelInfo {
+export function parseModelInfo(
+	modelId: string,
+	options: { assumeLongContextClaudeModels?: boolean } = {}
+): ParsedModelInfo {
 	const rawModelId = modelId;
 	const parts = modelId.split(".");
 	const provider = parts[0] || "unknown";
@@ -313,7 +355,7 @@ export function parseModelInfo(modelId: string): ParsedModelInfo {
 	const capabilities = inferModelCapabilities(modelId);
 
 	// Infer token limits
-	const { contextLength, maxOutputTokens } = inferTokenLimits(modelId);
+	const { contextLength, maxOutputTokens } = inferTokenLimits(modelId, options);
 
 	return {
 		id: `mantle:${rawModelId}`,

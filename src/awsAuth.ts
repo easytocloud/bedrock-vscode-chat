@@ -3,11 +3,11 @@
  * Allows using AWS credentials instead of API keys for Mantle endpoints
  */
 
-import { SignatureV4 } from "@aws-sdk/signature-v4";
+import { SignatureV4 } from "@smithy/signature-v4";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
-import type { AwsCredentialIdentity, Provider } from "@aws-sdk/types";
+import type { AwsCredentialIdentity, Provider } from "@smithy/types";
 
 export function getCredentialsProvider(profile: string | undefined): Provider<AwsCredentialIdentity> {
 	const trimmed = (profile ?? "").trim();

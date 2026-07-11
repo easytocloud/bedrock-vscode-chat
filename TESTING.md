@@ -131,7 +131,7 @@ To test against actual AWS Bedrock:
    ```
 
 2. In the debug extension:
-   - Choose a **native Bedrock Converse model** (e.g., "Claude 3 Haiku (Native)")
+   - Choose a **native Bedrock Converse model** (e.g., "Claude 3 Haiku (Bedrock)")
    - Ensure you have a tool-compatible model
    - Run the multi-turn scenario above
 

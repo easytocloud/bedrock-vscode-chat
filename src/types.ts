@@ -187,4 +187,10 @@ export interface ParsedModelInfo {
 	maxInputTokens?: number;
 	maxOutputTokens: number;
 	capabilities: ModelCapabilities;
+	/**
+	 * Native Bedrock only: true when discovery found a cross-region inference profile
+	 * that contains this model, meaning direct on-demand invocation by model ID is
+	 * expected to fail and the profile identifier should be used instead.
+	 */
+	requiresInferenceProfile?: boolean;
 }

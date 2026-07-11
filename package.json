@@ -2,7 +2,7 @@
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "Bedrock LLMs for GitHub Copilot Chat",
   "description": "Use AWS Bedrock models in GitHub Copilot Chat with streaming, tool calling, and multi-region support",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "publisher": "easytocloud",
   "icon": "icon.png",
   "repository": {
@@ -58,117 +58,186 @@
         "title": "Show AWS Bedrock Logs"
       }
     ],
-    "configuration": {
-      "title": "AWS Bedrock",
-      "properties": {
-        "aws-bedrock.enableMantle": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable Mantle (OpenAI-compatible) models"
-        },
-        "aws-bedrock.enableNative": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable native AWS Bedrock models via the Converse API (uses your AWS credentials, not the Mantle API key)"
-        },
-        "aws-bedrock.mantleAuthMethod": {
-          "type": "string",
-          "enum": [
-            "apiKey",
-            "awsCredentials"
-          ],
-          "enumDescriptions": [
-            "Use API key from AWS Bedrock Console (simpler, no AWS CLI setup needed)",
-            "Use AWS credentials/profile (better for existing AWS setups)"
-          ],
-          "default": "apiKey",
-          "description": "Authentication method for Mantle models"
-        },
-        "aws-bedrock.mantleAwsProfile": {
-          "type": "string",
-          "default": "",
-          "description": "Optional AWS named profile to use for Mantle when using AWS credentials auth. Leave empty to use the default AWS credential chain."
-        },
-        "aws-bedrock.awsProfile": {
-          "type": "string",
-          "default": "",
-          "description": "Optional AWS named profile to use for native Bedrock (Converse). Leave empty to use the default AWS credential chain."
-        },
-        "aws-bedrock.region": {
-          "type": "string",
-          "enum": [
-            "us-east-1",
-            "us-east-2",
-            "us-west-2",
-            "eu-west-1",
-            "eu-west-2",
-            "eu-central-1",
-            "eu-north-1",
-            "eu-south-1",
-            "ap-south-1",
-            "ap-northeast-1",
-            "ap-southeast-3",
-            "sa-east-1"
-          ],
-          "enumDescriptions": [
-            "US East (N. Virginia)",
-            "US East (Ohio)",
-            "US West (Oregon)",
-            "Europe (Ireland)",
-            "Europe (London)",
-            "Europe (Frankfurt)",
-            "Europe (Stockholm)",
-            "Europe (Milan)",
-            "Asia Pacific (Mumbai)",
-            "Asia Pacific (Tokyo)",
-            "Asia Pacific (Jakarta)",
-            "South America (São Paulo)"
-          ],
-          "default": "us-east-1",
-          "description": "AWS region for Bedrock (Mantle and native)"
-        },
-        "aws-bedrock.showAllModels": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show all available models including specialized variants (like safeguard models)"
-        },
-        "aws-bedrock.debugLogging": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable verbose debug logging to the 'AWS Bedrock' Output Channel"
-        },
-        "aws-bedrock.sendTools": {
-          "type": "boolean",
-          "default": true,
-          "description": "Send tool definitions to the model (disabling can improve latency and avoid very large requests)"
-        },
-        "aws-bedrock.emitPlaceholders": {
-          "type": "boolean",
-          "default": true,
-          "description": "Emit placeholder text like 'Thinking…' or '(Waiting for model output…)' into chat while waiting"
-        },
-        "aws-bedrock.modelMetadataSource": {
-          "type": "string",
-          "enum": [
-            "litellm",
-            "none"
-          ],
-          "default": "litellm",
-          "description": "Where to source model capability + token limit metadata. 'litellm' uses a public registry; 'none' uses built-in heuristics + runtime probing only."
-        },
-        "aws-bedrock.modelMetadataUrl": {
-          "type": "string",
-          "default": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-          "description": "URL for external model metadata (used when modelMetadataSource=litellm)"
-        },
-        "aws-bedrock.modelMetadataCacheHours": {
-          "type": "number",
-          "default": 24,
-          "minimum": 0,
-          "description": "How long to cache external model metadata (hours). 0 disables caching and always refetches."
+    "configuration": [
+      {
+        "title": "AWS Bedrock",
+        "order": 0,
+        "properties": {
+          "aws-bedrock.region": {
+            "type": "string",
+            "order": 1,
+            "enum": [
+              "us-east-1",
+              "us-east-2",
+              "us-west-1",
+              "us-west-2",
+              "ca-central-1",
+              "eu-west-1",
+              "eu-west-2",
+              "eu-west-3",
+              "eu-central-1",
+              "eu-north-1",
+              "eu-south-1",
+              "ap-south-1",
+              "ap-northeast-1",
+              "ap-northeast-2",
+              "ap-southeast-1",
+              "ap-southeast-2",
+              "ap-southeast-3",
+              "sa-east-1"
+            ],
+            "enumDescriptions": [
+              "US East (N. Virginia)",
+              "US East (Ohio)",
+              "US West (N. California)",
+              "US West (Oregon)",
+              "Canada (Central)",
+              "Europe (Ireland)",
+              "Europe (London)",
+              "Europe (Paris)",
+              "Europe (Frankfurt)",
+              "Europe (Stockholm)",
+              "Europe (Milan)",
+              "Asia Pacific (Mumbai)",
+              "Asia Pacific (Tokyo)",
+              "Asia Pacific (Seoul)",
+              "Asia Pacific (Singapore)",
+              "Asia Pacific (Sydney)",
+              "Asia Pacific (Jakarta)",
+              "South America (São Paulo)"
+            ],
+            "default": "us-east-1",
+            "markdownDescription": "AWS region to use for Bedrock, for both the Mantle (#aws-bedrock.enableMantle#) and Native (#aws-bedrock.enableNative#) backends."
+          },
+          "aws-bedrock.showAllModels": {
+            "type": "boolean",
+            "order": 2,
+            "default": true,
+            "description": "Show every model Bedrock returns, including specialized variants like safeguard/guardrail models. Turn off to only see general-purpose chat models."
+          },
+          "aws-bedrock.debugLogging": {
+            "type": "boolean",
+            "order": 3,
+            "default": false,
+            "markdownDescription": "Log verbose request/response details to the **AWS Bedrock** Output channel. Turn this on before reporting an issue."
+          }
+        }
+      },
+      {
+        "title": "AWS Bedrock › Mantle (OpenAI-compatible)",
+        "order": 1,
+        "properties": {
+          "aws-bedrock.enableMantle": {
+            "type": "boolean",
+            "order": 1,
+            "default": true,
+            "markdownDescription": "Show models available through **Mantle**, Bedrock's OpenAI-compatible endpoint. Turn off if you only want the native Converse backend (#aws-bedrock.enableNative#)."
+          },
+          "aws-bedrock.mantleAuthMethod": {
+            "type": "string",
+            "order": 2,
+            "enum": [
+              "apiKey",
+              "awsCredentials"
+            ],
+            "enumDescriptions": [
+              "Use an API key from the AWS Bedrock console — simplest option, no AWS CLI setup needed.",
+              "Sign requests with your AWS credentials/profile — best if you already use the AWS CLI."
+            ],
+            "default": "apiKey",
+            "description": "How to authenticate to Mantle. Only relevant when Mantle is enabled above."
+          },
+          "aws-bedrock.mantleAwsProfile": {
+            "type": "string",
+            "order": 3,
+            "default": "",
+            "markdownDescription": "Named AWS profile (from `~/.aws/config`) to use for Mantle when authenticating with AWS credentials. Leave empty to use the default credential chain. Ignored when the auth method above is `apiKey`."
+          }
+        }
+      },
+      {
+        "title": "AWS Bedrock › Native (Converse API)",
+        "order": 2,
+        "properties": {
+          "aws-bedrock.enableNative": {
+            "type": "boolean",
+            "order": 1,
+            "default": true,
+            "markdownDescription": "Show models available through Bedrock's **native Converse API**, using your AWS credentials directly (no Mantle API key needed)."
+          },
+          "aws-bedrock.awsProfile": {
+            "type": "string",
+            "order": 2,
+            "default": "",
+            "markdownDescription": "Named AWS profile (from `~/.aws/config`) to use for native Bedrock calls. Leave empty to use the default credential chain."
+          }
+        }
+      },
+      {
+        "title": "AWS Bedrock › Chat Behavior",
+        "order": 3,
+        "properties": {
+          "aws-bedrock.sendTools": {
+            "type": "boolean",
+            "order": 1,
+            "default": true,
+            "description": "Send Copilot Chat's tool definitions to the model. Turning this off can reduce latency and request size, but disables tool calling."
+          },
+          "aws-bedrock.emitPlaceholders": {
+            "type": "boolean",
+            "order": 2,
+            "default": true,
+            "description": "Show lightweight placeholder text (e.g. 'Thinking…') while waiting on a slow or reasoning-heavy model, so the chat doesn't look stuck."
+          },
+          "aws-bedrock.enablePromptCaching": {
+            "type": "boolean",
+            "order": 3,
+            "default": true,
+            "markdownDescription": "Cache repeated tool definitions and conversation history (Bedrock `cachePoint`) to reduce cost and latency on native Converse requests. Only applies to Claude/Nova models — ignored for other model families."
+          },
+          "aws-bedrock.assumeLongContextClaudeModels": {
+            "type": "boolean",
+            "order": 4,
+            "default": true,
+            "markdownDescription": "Report a 1,000,000-token context window for the specific Claude models known to support it (Sonnet 4, Sonnet 4.6, Sonnet 5, Opus 4.6+), instead of the standard 200,000. This can't be derived from the model name — context window doesn't increase with every version, e.g. Sonnet 4.5 is capped at 200K even though Sonnet 4 and 4.6 support 1M — so it comes from a small maintained list in the extension. Turn this off if you hit context-length errors for a specific model in your account/region, or if you'd rather rely on #aws-bedrock.modelMetadataSource# for this data."
+          }
+        }
+      },
+      {
+        "title": "AWS Bedrock › Model Metadata",
+        "order": 4,
+        "properties": {
+          "aws-bedrock.modelMetadataSource": {
+            "type": "string",
+            "order": 1,
+            "enum": [
+              "none",
+              "litellm"
+            ],
+            "enumDescriptions": [
+              "Use only built-in heuristics and runtime probing. No external network calls.",
+              "Additionally fetch a public model registry (litellm) for more accurate limits — mainly useful for non-Claude Mantle models."
+            ],
+            "default": "none",
+            "description": "Where to source model capability and token-limit metadata beyond what Bedrock's own APIs and this extension's built-in heuristics provide."
+          },
+          "aws-bedrock.modelMetadataUrl": {
+            "type": "string",
+            "order": 2,
+            "default": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
+            "description": "Registry URL to fetch from. Only used when the source above is set to 'litellm'.",
+            "editPresentation": "singlelineText"
+          },
+          "aws-bedrock.modelMetadataCacheHours": {
+            "type": "number",
+            "order": 3,
+            "default": 24,
+            "minimum": 0,
+            "description": "How long to cache fetched metadata, in hours, before refetching. 0 disables caching and refetches every time. Only used when the source above is set to 'litellm'."
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -178,11 +247,12 @@
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",
-    "@aws-sdk/client-bedrock": "^3.879.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.879.0",
-    "@aws-sdk/credential-provider-ini": "^3.879.0",
-    "@aws-sdk/credential-provider-node": "^3.879.0",
-    "@aws-sdk/signature-v4": "^3.370.0"
+    "@aws-sdk/client-bedrock": "^3.1085.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1085.0",
+    "@aws-sdk/credential-provider-ini": "^3.973.1",
+    "@aws-sdk/credential-provider-node": "^3.972.66",
+    "@smithy/signature-v4": "^5.6.4",
+    "@smithy/types": "^4.16.1"
   },
   "devDependencies": {
     "@types/node": "^20.x",

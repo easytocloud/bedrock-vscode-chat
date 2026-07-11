@@ -5,6 +5,31 @@ All notable changes to the AWS Bedrock GitHub Copilot Chat extension will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-11
+
+### Added
+- **Prompt Caching**: Native Converse requests to Claude/Nova models now insert Bedrock `cachePoint` checkpoints on tool definitions and the growing conversation history, reducing cost and latency on repeated turns. New `aws-bedrock.enablePromptCaching` setting (default on). Ignored for model families that don't support it.
+- **Proactive Inference-Profile Resolution**: Model discovery now calls `ListInferenceProfiles` alongside `ListFoundationModels` and prewarms the resolution cache, so the first request to a current-generation Claude model no longer has to fail an on-demand attempt before falling back to its cross-region inference profile.
+- **`aws-bedrock.assumeLongContextClaudeModels` setting**: Reports a 1,000,000-token context window for the specific Claude models known to support it (Sonnet 4, Sonnet 4.6, Sonnet 5, Opus 4.6+). Context window isn't monotonic by version — Sonnet 4.5 is capped at 200K despite sitting between two 1M-context releases — so this comes from a small maintained list rather than a computed rule. On by default; can be disabled per account/region.
+- Defensive handling of Converse `reasoningContent` blocks: logged instead of silently dropped, with a lightweight "Thinking…" placeholder if a response ever contains only reasoning content.
+
+### Changed
+- **Settings page reorganized** into five grouped sections (AWS Bedrock, › Mantle, › Native, › Chat Behavior, › Model Metadata) with explicit display order and richer, cross-linked descriptions, replacing one flat 14-item list.
+- **`aws-bedrock.modelMetadataSource` now defaults to `none`** instead of `litellm` — no external network call on model refresh out of the box. Litellm remains available as an opt-in for more accurate limits on non-Claude Mantle models.
+- **Region list expanded from 12 to 18 regions** (added `us-west-1`, `ca-central-1`, `eu-west-3`, `ap-northeast-2`, `ap-southeast-1`, `ap-southeast-2`) and consolidated into a single source of truth (`src/regions.ts`) shared by the settings schema and the region picker.
+- Native Bedrock models are now labeled "(Bedrock)" in the model picker instead of "(Native)".
+- Token-limit heuristics no longer flatten every current-generation Claude model to 200K/4096 context when external metadata is unavailable; added a Claude 3.7 tier and generous defaults for 4.x/5.x+.
+
+### Fixed
+- AWS SDK dependencies bumped from 3.879 to 3.1085 (~6 months of Bedrock feature/region additions). Replaced the deprecated `@aws-sdk/signature-v4` and `@aws-sdk/types` packages with their canonical `@smithy/*` successors.
+- Removed a dead `prepareLanguageModelChatInformation` method left over from an earlier, non-stable shape of VS Code's `LanguageModelChatProvider` API — it was never part of the interface VS Code actually calls.
+- Replaced a dynamic `require("./utils")` in `bedrockNative.ts` with a static import.
+
+## [0.3.4] - 2026-02-25
+
+### Changed
+- Rebranded documentation for GitHub Copilot Chat and sharpened compliance-focused positioning (data residency, region control, enterprise access model) across README, CONTRIBUTING, and other docs.
+
 ## [0.3.3] - 2026-02-05
 
 ### Fixed
@@ -137,6 +162,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Show AWS Bedrock Logs`: Open output channel
 - `Clear AWS Bedrock API Key`: Remove stored API key
 
+[0.4.0]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.4...v0.4.0
+[0.3.4]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/easytocloud/bedrock-vscode-chat/compare/v0.3.0...v0.3.1
