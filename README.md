@@ -98,27 +98,41 @@ Authentication options:
 
 4. Press `F5` to open a new VS Code window with the extension loaded
 
-## Setup
+## Setup & Quick Start
 
-Native Bedrock and Mantle each have their own management command, since they're independent providers with independent settings.
+Native Bedrock and Mantle each have their own management command and settings, since they're independent providers with independent AWS endpoints, regions, and authentication details.
+
+### Quick Start: Use the Manage Commands
+
+The fastest way to configure both providers is via the VS Code Command Palette:
+
+1. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
+2. Type `Manage AWS Bedrock` to see the two commands:
+   - **`Manage AWS Bedrock (Native)`** — configures native Bedrock (Converse API)
+   - **`Manage AWS Bedrock Mantle`** — configures Mantle (OpenAI-compatible API)
+3. Each command opens an interactive QuickPick menu with the current settings prominently displayed, real-time profile discovery from `~/.aws/config`, and a "Test Connection" action to verify your setup
+
+The manage commands are also accessible via a gear icon next to the model picker in the Copilot Chat panel.
 
 ### 1. Native Bedrock (Converse API)
 
-1. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-2. Run: `Manage AWS Bedrock (Native)`
-3. **Set AWS Profile** — optional named profile (leave blank for the default AWS credential chain)
-4. **Change Region** — choose from native Bedrock's 18 supported regions (default `us-east-1`)
+Via `Manage AWS Bedrock (Native)` command or settings:
+
+1. **Set AWS Profile** — optional named profile (leave blank for the default AWS credential chain). The manage command auto-discovers profiles from `~/.aws/config` and `~/.aws/credentials`.
+2. **Change Region** — choose from native Bedrock's 18 supported regions (default `us-east-1`)
+3. **Test Connection** — run a real credential check to verify your setup works
 
 Native Bedrock always authenticates with AWS credentials (env vars, `~/.aws/credentials`, SSO, etc.) — there's no API key option here.
 
 ### 2. Mantle (OpenAI-compatible + Anthropic Messages)
 
-1. Open Command Palette
-2. Run: `Manage AWS Bedrock Mantle`
-3. **Configure Authentication** — choose API Key (simpler) or AWS Credentials
+Via `Manage AWS Bedrock Mantle` command or settings:
+
+1. **Configure Authentication** — choose API Key (simpler) or AWS Credentials
    - **API Key**: run `Manage AWS Bedrock Mantle` → "Enter API Key" and paste your key from the [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/). You'll also be prompted automatically on first use. Keys are stored in VS Code's SecretStorage.
-   - **AWS Credentials**: uses AWS Signature V4 with your existing credentials; optionally set a specific profile via "Set AWS Profile"
-4. **Change Region** — choose from Mantle's 13 supported regions (a strict subset of native Bedrock's — default `us-east-1`)
+   - **AWS Credentials**: uses AWS Signature V4 with your existing credentials; optionally set a specific profile via "Set AWS Profile" (auto-discovered from `~/.aws/config`)
+2. **Change Region** — choose from Mantle's 13 supported regions (a strict subset of native Bedrock's — default `us-east-1`)
+3. **Test Connection** — run a real credential check to verify your setup works
 
 ### Configure via Settings
 

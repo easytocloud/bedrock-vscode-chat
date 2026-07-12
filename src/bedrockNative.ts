@@ -10,7 +10,7 @@ import {
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
 import type { ParsedModelInfo } from "./types";
-import { createRequestTimeoutGuard, disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits } from "./utils";
+import { createRequestTimeoutGuard, disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits, isHiddenWhenNotShowAll } from "./utils";
 
 function getCredentials(profile: string | undefined) {
 	const trimmed = (profile ?? "").trim();
@@ -295,15 +295,21 @@ export async function listNativeBedrockModels(options: {
 
 	const models: ParsedModelInfo[] = summaries
 		.filter((m) => {
+			// Always exclude non-active models (LEGACY, etc.). ACTIVE means currently available.
+			const lifecycleStatus = (m.modelLifecycle?.status ?? "").toString().toUpperCase();
+			if (lifecycleStatus !== "ACTIVE") {
+				return false;
+			}
+
 			if (options.showAllModels) {
 				return true;
 			}
 			// When not showing all, hide obvious embeddings/safeguards and non-text outputs.
-			const id = (m.modelId ?? "").toLowerCase();
+			const id = m.modelId ?? "";
 			if (!id) {
 				return false;
 			}
-			if (id.includes("embed") || id.includes("embedding") || id.includes("guard") || id.includes("safeguard")) {
+			if (isHiddenWhenNotShowAll(id)) {
 				return false;
 			}
 			return true;

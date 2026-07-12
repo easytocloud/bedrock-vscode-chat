@@ -280,6 +280,13 @@ export function isMantleServedModelId(modelId: string): boolean {
 	return MANTLE_CHAT_COMPLETIONS_FAMILIES.some((f) => id.includes(f));
 }
 
+const HIDDEN_MODEL_SUBSTRINGS = ["embed", "embedding", "guard", "safeguard"];
+
+export function isHiddenWhenNotShowAll(modelId: string): boolean {
+	const id = modelId.toLowerCase();
+	return HIDDEN_MODEL_SUBSTRINGS.some((s) => id.includes(s));
+}
+
 /**
  * Claude models known to support a 1M-token context window. This is NOT a function of
  * generation number — e.g. sonnet-4 and sonnet-4-6 support 1M but sonnet-4-5 (released

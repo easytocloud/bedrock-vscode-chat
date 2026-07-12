@@ -33,6 +33,7 @@ import {
 	createRequestTimeoutGuard,
 	disambiguateDisplayNames,
 	generateCallId,
+	isHiddenWhenNotShowAll,
 	parseModelInfo,
 	shouldLog,
 	tryParseJSONObject,
@@ -322,7 +323,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 							return m;
 						});
 					if (!showAllModels) {
-						parsedModels = parsedModels.filter((m) => !m.id.includes("safeguard"));
+						parsedModels = parsedModels.filter((m) => !isHiddenWhenNotShowAll(m.id));
 					}
 				}
 			}
@@ -908,5 +909,9 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 	async setApiKey(apiKey: string): Promise<void> {
 		await this.secrets.store("bedrock.apiKey", apiKey);
 		this.refresh();
+	}
+
+	async hasStoredApiKey(): Promise<boolean> {
+		return (await this.secrets.get("bedrock.apiKey")) !== undefined;
 	}
 }
