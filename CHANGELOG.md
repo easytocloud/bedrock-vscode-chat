@@ -5,6 +5,14 @@ All notable changes to the AWS Bedrock GitHub Copilot Chat extension will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-07-12
+
+### Changed
+- **Repository reorganization**: moved configuration files (`esbuild.js`, `tsconfig.json`, `eslint.config.js`, `Makefile`) into `config/` directory, documentation into `docs/`, and assets into `assets/` for better maintainability. Updated all build scripts and paths accordingly.
+
+### Fixed
+- Fixed ESLint configuration path resolution in lint script by adding `--config config/eslint.config.js` flag.
+
 ## [0.6.1] - 2026-07-12
 
 ### Changed
