@@ -320,7 +320,7 @@
     "watch:esbuild": "node config/esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch -p config",
     "package": "npm run check-types && npm run lint && node config/esbuild.js --production",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint --config config/eslint.config.js src --ext ts"
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",
