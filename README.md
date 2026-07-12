@@ -69,6 +69,8 @@ Authentication options:
    - You can also set `aws-bedrock.awsProfile`
 3. **VS Code**: Version 1.104.0 or later
 
+The extension includes a built-in profile picker, status headers, and connection test to help you debug authentication setup.
+
 ## Installation
 
 ### From VS Code Marketplace
@@ -380,16 +382,26 @@ bedrock-vscode-chat/
 │   └── utils.ts                # Utility functions
 ├── package.json                # Extension manifest
 ├── tsconfig.json               # TypeScript configuration
-├── icon.svg                    # Source icon (editable)
-├── icon.png                    # Extension icon (128x128)
+├── assets/
+│   ├── icon.svg                # Source icon (editable)
+│   └── icon.png                # Extension icon (128x128)
+├── docs/
+│   ├── CONTRIBUTING.md         # Development guide
+│   ├── QUICKSTART.md           # Quick start for developers
+│   ├── TESTING.md              # Testing guide
+│   └── dev/
+│       └── MODEL_STRATEGIES.md # Model capability detection strategy
+├── config/
+│   ├── Makefile                # Build automation
+│   ├── esbuild.js              # Bundler configuration
+│   ├── eslint.config.js        # Linter configuration
+│   └── tsconfig.json           # TypeScript configuration
 ├── README.md                   # This file
-├── CONTRIBUTING.md             # Development guide
-└── PLAN.md                     # Architecture details
 ```
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines.
+Contributions are welcome! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed development guidelines.
 
 **Quick start for contributors:**
 
@@ -397,7 +409,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed d
 2. Install dependencies: `npm install`
 3. Compile: `npm run compile`
 4. Press F5 to launch Extension Development Host
-5. See CONTRIBUTING.md for testing, logging, and publishing guidelines
+5. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for testing, logging, and publishing guidelines
 
 **Key development notes:**
 - Publisher name: `easytocloud` (lowercase)
@@ -411,7 +423,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed d
 - [AWS Bedrock Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html)
 - [VS Code Language Model API](https://code.visualstudio.com/api/references/vscode-api#lm)
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
-- [Contributing Guide](CONTRIBUTING.md) - Detailed development documentation
+- [Contributing Guide](docs/CONTRIBUTING.md) - Detailed development documentation
 
 ## License
 

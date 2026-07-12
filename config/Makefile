@@ -59,21 +59,21 @@ check: compile lint
 # Clean build artifacts
 clean:
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
-	rm -rf out/
-	find . -name "*.js" -path "./out/*" -delete 2>/dev/null || true
-	find . -name "*.js.map" -path "./out/*" -delete 2>/dev/null || true
+	rm -rf ../out/
+	find .. -name "*.js" -path "../out/*" -delete 2>/dev/null || true
+	find .. -name "*.js.map" -path "../out/*" -delete 2>/dev/null || true
 
 # Complete cleanup
 clean-all: clean
 	@echo "$(BLUE)Removing node_modules...$(NC)"
-	rm -rf node_modules/
-	rm -rf dist/
+	rm -rf ../node_modules/
+	rm -rf ../dist/
 
 # Package extension as VSIX
 package: check
 	@echo "$(BLUE)Packaging extension...$(NC)"
-	mkdir -p dist
-	npx @vscode/vsce package --out dist/
+	mkdir -p ../dist
+	npx @vscode/vsce package --out ../dist/
 
 # Publish to VS Code Marketplace
 publish: check
@@ -105,4 +105,4 @@ version-major:
 
 # Print current version
 version:
-	@grep '"version"' package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/'
+	@grep '"version"' ../package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/'

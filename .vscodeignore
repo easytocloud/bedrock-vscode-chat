@@ -6,29 +6,20 @@ node_modules/**
 .vscode-test/**
 .github/**
 
-# Packaged VSIX archive from past releases (Makefile's `package` target)
+# Packaged VSIX archive from past releases
 dist/**
 
-# Build / lint / test config not needed at runtime
-tsconfig.json
-esbuild.js
-eslint.config.js
-.eslintrc*
-package-lock.json
-Makefile
+# Build / lint / test config and documentation not needed at runtime
+config/**
+docs/**
 *.map
 
-# Docs not needed inside the published extension
-CONTRIBUTING.md
-TESTING.md
-PLAN.md
-QUICKSTART.md
-FIX_SUMMARY.md
-MODEL_CAPABILITIES_STRATEGY.md
-icon.svg
+# Assets that aren't needed (SVG version is redundant with PNG)
+assets/icon.svg
 
 # Misc
 .gitignore
 .git/**
 *.vsix
-test-*.js
+.mcp.json
+.claude/

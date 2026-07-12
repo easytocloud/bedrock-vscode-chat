@@ -35,10 +35,11 @@ npm run watch
 ```
 This will automatically recompile when you make changes.
 
-You can also use Makefile shortcuts:
+You can also use Makefile shortcuts (stored in `config/`):
 
 ```bash
-make watch
+make -f config/Makefile watch
+# Or cd into config/ and run: make watch
 ```
 
 ### Debugging
@@ -72,8 +73,8 @@ Try these models for different use cases:
 
 ## Next Steps
 
-See [PLAN.md](PLAN.md) for the full architecture and implementation details.
-See [README.md](README.md) for complete documentation.
+See [../README.md](../README.md) for complete documentation.
+See [LEGACY/PLAN.md](LEGACY/PLAN.md) for the original architecture plan and implementation details.
 
 ## Useful Commands
 
@@ -82,8 +83,8 @@ See [README.md](README.md) for complete documentation.
 | `npm run compile` | Compile TypeScript |
 | `npm run watch` | Watch mode compilation |
 | `npm run lint` | Run linting |
-| `make dev` | Compile + watch (development mode) |
-| `make package` | Build a VSIX in dist/ |
-| `make publish` | Publish to VS Code Marketplace |
+| `make -f config/Makefile dev` | Compile + watch (development mode) |
+| `make -f config/Makefile package` | Build a VSIX in dist/ |
+| `make -f config/Makefile publish` | Publish to VS Code Marketplace |
 | `F5` | Launch Extension Development Host |
 | `Cmd/Ctrl+R` | Reload Extension Development Host |
