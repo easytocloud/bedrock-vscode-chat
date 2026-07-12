@@ -1,4 +1,4 @@
-# Contributing to AWS Bedrock GitHub Copilot Chat Extension
+# Contributing to the GitHub Copilot Chat Model Provider for Amazon Bedrock
 
 ## Development Setup
 
@@ -21,7 +21,7 @@ npm run compile
 ### Publisher Information
 - **Publisher ID**: `easytocloud` (lowercase - important!)
 - **Extension ID**: `bedrock-mantle-vscode-chat`
-- **Display Name**: "Bedrock LLMs for GitHub Copilot Chat"
+- **Display Name**: "GitHub Copilot Chat Model Provider for Amazon Bedrock"
 
 ### Package Structure
 The extension is bundled with esbuild (`esbuild.js`) into a single `out/extension.js`, with all runtime dependencies (AWS SDK, etc.) inlined. `node_modules` is excluded from the VSIX (`.vscodeignore`) — it isn't needed at runtime and would otherwise balloon the package to thousands of files.
@@ -61,7 +61,7 @@ code --install-extension bedrock-mantle-vscode-chat-x.x.x.vsix --force
 
 **Installed Extension:**
 - Open Output panel: Cmd+Shift+U (View → Output)
-- Select "AWS Bedrock" from the dropdown
+- Select "Amazon Bedrock" from the dropdown
 - **Never use `console.log()` - it goes nowhere!**
 - Always use `output.appendLine()` or provider's `logDebug()`/`logAlways()` methods
 
@@ -87,7 +87,7 @@ If the extension doesn't appear or activate:
 ### ✅ DO:
 ```typescript
 // In extension.ts
-const output = vscode.window.createOutputChannel("AWS Bedrock");
+const output = vscode.window.createOutputChannel("Amazon Bedrock (Copilot Chat)");
 output.appendLine("Extension activated");
 
 // In provider.ts
@@ -128,11 +128,11 @@ ls -lh icon.png
 - Size: 128x128 pixels
 - Format: PNG with transparency
 - Style: Should work on both light and dark backgrounds
-- Content: Include AWS/Bedrock branding elements
+- Content: Include AWS / Amazon Bedrock branding elements
 
 **Current design elements:**
 - Sunburst gradient background (light blue to dark)
-- AWS Bedrock foundation (orange/yellow)
+- Amazon Bedrock foundation (orange/yellow)
 - Chat bubbles (blue)
 - Horizon glow effect (subtle white ellipse)
 
@@ -175,11 +175,11 @@ Before releasing a new version:
 - [ ] No TypeScript errors: `npm run lint`
 - [ ] Extension activates in F5 mode
 - [ ] Extension activates when installed from VSIX
-- [ ] Output channel shows logs (check "AWS Bedrock" in Output panel)
+- [ ] Output channel shows logs (check "Amazon Bedrock (Copilot Chat)" in Output panel)
 - [ ] Models load successfully
 - [ ] Can send chat messages and receive responses
 - [ ] Error messages display correctly
-- [ ] Commands work (Manage AWS Bedrock, Show Logs)
+- [ ] Commands work (Manage Native Provider, Show Logs)
 - [ ] Icon displays correctly in Extensions panel
 - [ ] README is up to date
 
@@ -241,8 +241,8 @@ registerCommandSafe("bedrock-mantle-vscode-chat.myCommand", myCommandHandler);
 ### Key Files
 
 - `src/extension.ts` - Extension entry point; registers both providers, command registration
-- `src/provider.ts` - `NativeBedrockProvider`, implementing `LanguageModelChatProvider` for native Bedrock (Converse API)
-- `src/bedrockNative.ts` - Native AWS Bedrock support via Converse API
+- `src/provider.ts` - `NativeBedrockProvider`, implementing `LanguageModelChatProvider` for native Amazon Bedrock (Converse API)
+- `src/bedrockNative.ts` - Native Amazon Bedrock support via Converse API
 - `src/mantleProvider.ts` - `MantleProvider`, implementing `LanguageModelChatProvider` for Mantle (Chat Completions + Messages dispatch)
 - `src/mantleMessages.ts` - Mantle's Anthropic Messages API client
 - `src/utils.ts` - Utility functions for message conversion, etc.
@@ -259,7 +259,7 @@ registerCommandSafe("bedrock-mantle-vscode-chat.myCommand", myCommandHandler);
 
 2. **Model Discovery** (`provideLanguageModelChatInformation`)
    - Fetch Mantle models (if enabled)
-   - Fetch native Bedrock models (if enabled)
+   - Fetch native Amazon Bedrock models (if enabled)
    - Merge and return model list
 
 3. **Chat** (`provideLanguageModelChatResponse`)
@@ -273,14 +273,14 @@ registerCommandSafe("bedrock-mantle-vscode-chat.myCommand", myCommandHandler);
 The extension supports two backends:
 
 1. **Mantle** (OpenAI-compatible)
-   - Requires API key from AWS Bedrock Console
+   - Requires API key from the Amazon Bedrock console
    - Uses `buildEndpointUrl(region)` for endpoints
    - Models marked as "(Mantle)" in picker
 
-2. **Native Bedrock** (Converse API)
+2. **Native Amazon Bedrock** (Converse API)
    - Uses AWS credentials (SDK)
    - Supports AWS profiles
-   - Models marked as "(Bedrock)" in picker
+   - Models marked as "(Native)" in picker
 
 ## Troubleshooting Common Issues
 
@@ -332,5 +332,5 @@ The extension supports two backends:
 
 - Open an issue on GitHub
 - Check existing issues for similar problems
-- Include logs from Output Channel ("AWS Bedrock")
+- Include logs from Output Channel ("Amazon Bedrock (Copilot Chat)")
 - Provide VS Code version and extension version

@@ -1,12 +1,12 @@
 /**
- * AWS Bedrock Mantle Language Model Provider
- * Implements VSCode's LanguageModelChatProvider using Bedrock's OpenAI-compatible
+ * Amazon Bedrock Mantle Language Model Provider
+ * Implements VSCode's LanguageModelChatProvider using Amazon Bedrock's OpenAI-compatible
  * Mantle Chat Completions API (bedrock-mantle.<region>.api.aws/v1/chat/completions)
  * for most models, and Mantle's Anthropic Messages API
  * (bedrock-mantle.<region>.api.aws/anthropic/v1/messages, see mantleMessages.ts)
  * for the subset of Claude models Mantle supports.
  *
- * Mantle is a genuinely separate AWS Bedrock endpoint from the native
+ * Mantle is a genuinely separate Amazon Bedrock endpoint from the native
  * Converse/Invoke backend (see NativeBedrockProvider in provider.ts) — different
  * region footprint, different auth model details, and different model coverage.
  * No Anthropic Claude model supports Mantle's Chat Completions API — confirmed
@@ -302,7 +302,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 					parsedModels = data.data
 						// Mantle's /v1/models catalog lists Anthropic Claude models, but its
 						// /v1/chat/completions invoke endpoint rejects ALL of them outright — no
-						// Claude model supports Chat Completions on any Bedrock endpoint. Claude
+						// Claude model supports Chat Completions on any Amazon Bedrock endpoint. Claude
 						// is only usable through Mantle's separate Messages API
 						// (/anthropic/v1/messages), and only for the subset of models in
 						// MANTLE_MESSAGES_CLAUDE_PATTERNS. Anything else Claude-flavored has zero
@@ -369,7 +369,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				name: `${model.displayName} (Mantle)`,
 				family: "aws-bedrock-mantle",
 				version: "1.0.0",
-				tooltip: "AWS Bedrock via Mantle (OpenAI-compatible)",
+				tooltip: "Amazon Bedrock via Mantle (OpenAI-compatible)",
 				maxInputTokens: explicitMaxInput,
 				maxOutputTokens: maxOutput,
 				capabilities: {
@@ -388,7 +388,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 			name: `${model.displayName} (Mantle)`,
 			family: "aws-bedrock-mantle",
 			version: "1.0.0",
-			tooltip: "AWS Bedrock via Mantle (OpenAI-compatible)",
+			tooltip: "Amazon Bedrock via Mantle (OpenAI-compatible)",
 			maxInputTokens: maxInput,
 			maxOutputTokens: safeMaxOutput,
 			capabilities: {
@@ -419,12 +419,12 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		if (authMethod === "apiKey") {
 			apiKey = await this.ensureApiKey(false);
 			if (!apiKey) {
-				throw new Error("AWS Bedrock API key is required");
+				throw new Error("Amazon Bedrock API key is required");
 			}
 		}
 
 		// Claude models on Mantle go through the separate Anthropic Messages API, not
-		// Chat Completions (which no Claude model supports on any Bedrock endpoint).
+		// Chat Completions (which no Claude model supports on any Amazon Bedrock endpoint).
 		const usesMessagesApi = parsed?.usesMantleMessagesApi ?? (isClaudeModelId(modelId) && supportsMantleMessagesApi(modelId));
 		if (usesMessagesApi) {
 			const region = this.mantleRegion();
@@ -557,8 +557,8 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				// message instead of retrying a request that can never succeed.
 				if (/does not support the .*chat\/completions/i.test(errorText)) {
 					throw new Error(
-						`${parsed?.modelId ?? model.id} can't be invoked through Bedrock Mantle's chat/completions API. ` +
-							`Use the "AWS Bedrock" (native) provider for this model instead.`
+						`${parsed?.modelId ?? model.id} can't be invoked through Amazon Bedrock Mantle's chat/completions API. ` +
+							`Use the "Amazon Bedrock" (native) provider for this model instead.`
 					);
 				}
 
@@ -579,7 +579,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 					}
 				} else {
 					if (response.status === 401) {
-						throw new Error("Invalid API key. Please update your AWS Bedrock API key.");
+						throw new Error("Invalid API key. Please update your Amazon Bedrock API key.");
 					} else if (response.status === 404) {
 						throw new Error(`Model ${model.id} not available in region ${region}`);
 					} else if (response.status === 429) {
@@ -883,8 +883,8 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 
 		if (!apiKey && !silent) {
 			const entered = await vscode.window.showInputBox({
-				title: "AWS Bedrock API Key",
-				prompt: "Enter your AWS Bedrock API key (from AWS Bedrock Console)",
+				title: "Amazon Bedrock API Key",
+				prompt: "Enter your Amazon Bedrock API key (from the Amazon Bedrock console)",
 				ignoreFocusOut: true,
 				password: true,
 				placeHolder: "bedrock-api-key-...",
@@ -903,7 +903,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 	async clearApiKey(): Promise<void> {
 		await this.secrets.delete("bedrock.apiKey");
 		this.refresh();
-		vscode.window.showInformationMessage("AWS Bedrock API key cleared");
+		vscode.window.showInformationMessage("Amazon Bedrock API key cleared");
 	}
 
 	async setApiKey(apiKey: string): Promise<void> {

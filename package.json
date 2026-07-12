@@ -1,8 +1,8 @@
 {
   "name": "bedrock-mantle-vscode-chat",
-  "displayName": "Bedrock LLMs for GitHub Copilot Chat",
-  "description": "Use AWS Bedrock models in GitHub Copilot Chat with streaming, tool calling, and multi-region support",
-  "version": "0.6.2",
+  "displayName": "GitHub Copilot Chat Model Provider for Amazon Bedrock",
+  "description": "Use Amazon Bedrock models in GitHub Copilot Chat with streaming, tool calling, and multi-region support",
+  "version": "0.6.3",
   "publisher": "easytocloud",
   "icon": "assets/icon.png",
   "repository": {
@@ -41,43 +41,70 @@
     "languageModelChatProviders": [
       {
         "vendor": "easytocloud.bedrock-mantle-vscode-chat",
-        "displayName": "AWS Bedrock",
-        "managementCommand": "bedrock-mantle-vscode-chat.manage"
+        "displayName": "Amazon Bedrock",
+        "managementCommand": "aws-bedrock.revealConfigView"
       },
       {
         "vendor": "easytocloud.bedrock-mantle",
-        "displayName": "AWS Bedrock Mantle",
-        "managementCommand": "bedrock-mantle-vscode-chat.manageMantle"
+        "displayName": "Amazon Bedrock Mantle",
+        "managementCommand": "aws-bedrock.revealConfigView"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aws-bedrock",
+          "title": "Amazon Bedrock (Copilot Chat)",
+          "icon": "assets/activitybar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "aws-bedrock": [
+        {
+          "id": "aws-bedrock.configView",
+          "name": "Configuration",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
+        "command": "aws-bedrock.revealConfigView",
+        "title": "Show Configuration",
+        "category": "Amazon Bedrock (Copilot Chat)"
+      },
+      {
         "command": "bedrock-mantle-vscode-chat.manage",
-        "title": "Manage AWS Bedrock (Native)"
+        "title": "Manage Native Provider (Converse API)",
+        "category": "Amazon Bedrock (Copilot Chat)"
       },
       {
         "command": "bedrock-mantle-vscode-chat.manageMantle",
-        "title": "Manage AWS Bedrock Mantle"
+        "title": "Manage Mantle Provider (OpenAI-compatible)",
+        "category": "Amazon Bedrock (Copilot Chat)"
       },
       {
         "command": "bedrock-mantle-vscode-chat.clearApiKey",
-        "title": "Clear AWS Bedrock API Key (Mantle)"
+        "title": "Clear Mantle API Key",
+        "category": "Amazon Bedrock (Copilot Chat)"
       },
       {
         "command": "bedrock-mantle-vscode-chat.showLogs",
-        "title": "Show AWS Bedrock Logs"
+        "title": "Show Logs",
+        "category": "Amazon Bedrock (Copilot Chat)"
       }
     ],
     "configuration": [
       {
-        "title": "AWS Bedrock",
+        "title": "Amazon Bedrock (Copilot Chat)",
         "order": 0,
         "properties": {
           "aws-bedrock.showAllModels": {
             "type": "boolean",
             "order": 1,
             "default": true,
-            "description": "Show every model Bedrock returns, including specialized variants like safeguard/guardrail models. Turn off to only see general-purpose chat models. Applies to both the Native and Mantle providers."
+            "description": "Show every model Amazon Bedrock returns, including specialized variants like safeguard/guardrail models. Turn off to only see general-purpose chat models. Applies to both the Native and Mantle providers."
           },
           "aws-bedrock.logLevel": {
             "type": "string",
@@ -97,32 +124,32 @@
               "No output channel logging."
             ],
             "default": "info",
-            "markdownDescription": "How much detail to log to the **AWS Bedrock** Output channel. Applies to both the Native and Mantle providers."
+            "markdownDescription": "How much detail to log to the **Amazon Bedrock (Copilot Chat)** Output channel. Applies to both the Native and Mantle providers."
           },
           "aws-bedrock.requestTimeout": {
             "type": "number",
             "order": 3,
             "default": 120000,
             "minimum": 0,
-            "markdownDescription": "Maximum time (ms) to wait for a response before aborting a request. For streaming requests (Mantle Chat Completions and Messages API) this only covers time-to-first-response — an actively streaming generation is never cut off once it starts. For native Bedrock Converse, which is not streamed, this covers the whole call. Applies to both the Native and Mantle providers. Set to 0 to disable."
+            "markdownDescription": "Maximum time (ms) to wait for a response before aborting a request. For streaming requests (Mantle Chat Completions and Messages API) this only covers time-to-first-response — an actively streaming generation is never cut off once it starts. For native Amazon Bedrock Converse, which is not streamed, this covers the whole call. Applies to both the Native and Mantle providers. Set to 0 to disable."
           }
         }
       },
       {
-        "title": "AWS Bedrock › Native (Converse API)",
+        "title": "Amazon Bedrock (Copilot Chat) › Native (Converse API)",
         "order": 1,
         "properties": {
           "aws-bedrock.enableNative": {
             "type": "boolean",
             "order": 1,
             "default": true,
-            "markdownDescription": "Register the **AWS Bedrock** provider (native Converse API), using your AWS credentials directly. This provider has the full Anthropic Claude catalog; only a subset of current Claude models are also reachable through the Mantle provider's Messages API."
+            "markdownDescription": "Register the **Amazon Bedrock** provider (native Converse API), using your AWS credentials directly. This provider has the full Anthropic Claude catalog; only a subset of current Claude models are also reachable through the Mantle provider's Messages API."
           },
           "aws-bedrock.awsProfile": {
             "type": "string",
             "order": 2,
             "default": "",
-            "markdownDescription": "Named AWS profile (from `~/.aws/config`) to use for native Bedrock calls. Leave empty to use the default credential chain."
+            "markdownDescription": "Named AWS profile (from `~/.aws/config`) to use for native Amazon Bedrock calls. Leave empty to use the default credential chain."
           },
           "aws-bedrock.region": {
             "type": "string",
@@ -168,25 +195,25 @@
               "South America (São Paulo)"
             ],
             "default": "us-east-1",
-            "markdownDescription": "AWS region for the native Bedrock (Converse) provider. Native Bedrock is deployed much more broadly than Mantle — see #aws-bedrock.mantleRegion# for Mantle's smaller region list."
+            "markdownDescription": "AWS region for the native Amazon Bedrock (Converse) provider. Amazon Bedrock is deployed much more broadly than Mantle — see #aws-bedrock.mantleRegion# for Mantle's smaller region list."
           },
           "aws-bedrock.hideMantleModelsFromNative": {
             "type": "boolean",
             "order": 4,
             "default": false,
-            "markdownDescription": "Hide models from this provider's list that are also available through the **AWS Bedrock Mantle** provider (open-weight models like DeepSeek, Mistral, Qwen, GLM, Nemotron, MiniMax, Kimi, Gemma, gpt-oss), so each model appears in exactly one provider's picker instead of both. Off by default since the two providers have different capabilities for the same model (e.g. guardrails and prompt routing are native-only; async/stateful features are Mantle-only)."
+            "markdownDescription": "Hide models from this provider's list that are also available through the **Amazon Bedrock Mantle** provider (open-weight models like DeepSeek, Mistral, Qwen, GLM, Nemotron, MiniMax, Kimi, Gemma, gpt-oss), so each model appears in exactly one provider's picker instead of both. Off by default since the two providers have different capabilities for the same model (e.g. guardrails and prompt routing are native-only; async/stateful features are Mantle-only)."
           }
         }
       },
       {
-        "title": "AWS Bedrock › Mantle (OpenAI-compatible)",
+        "title": "Amazon Bedrock (Copilot Chat) › Mantle (OpenAI-compatible)",
         "order": 2,
         "properties": {
           "aws-bedrock.enableMantle": {
             "type": "boolean",
             "order": 1,
             "default": true,
-            "markdownDescription": "Register the **AWS Bedrock Mantle** provider, Bedrock's OpenAI-compatible endpoint. Also includes a subset of current Anthropic Claude models, reached through Mantle's separate Messages API rather than Chat Completions (which no Claude model supports). Other Claude models are only available through the Native provider."
+            "markdownDescription": "Register the **Amazon Bedrock Mantle** provider, Amazon Bedrock's OpenAI-compatible endpoint. Also includes a subset of current Anthropic Claude models, reached through Mantle's separate Messages API rather than Chat Completions (which no Claude model supports). Other Claude models are only available through the Native provider."
           },
           "aws-bedrock.mantleAuthMethod": {
             "type": "string",
@@ -196,7 +223,7 @@
               "awsCredentials"
             ],
             "enumDescriptions": [
-              "Use an API key from the AWS Bedrock console — simplest option, no AWS CLI setup needed.",
+              "Use an API key from the Amazon Bedrock console — simplest option, no AWS CLI setup needed.",
               "Sign requests with your AWS credentials/profile — best if you already use the AWS CLI."
             ],
             "default": "apiKey",
@@ -242,12 +269,12 @@
               "South America (São Paulo)"
             ],
             "default": "us-east-1",
-            "markdownDescription": "AWS region for the Mantle provider. Mantle is deployed to fewer regions than native Bedrock — see #aws-bedrock.region# for the full native region list."
+            "markdownDescription": "AWS region for the Mantle provider. Mantle is deployed to fewer regions than native Amazon Bedrock — see #aws-bedrock.region# for the full native region list."
           }
         }
       },
       {
-        "title": "AWS Bedrock › Chat Behavior",
+        "title": "Amazon Bedrock (Copilot Chat) › Chat Behavior",
         "order": 3,
         "properties": {
           "aws-bedrock.sendTools": {
@@ -266,7 +293,7 @@
             "type": "boolean",
             "order": 3,
             "default": true,
-            "markdownDescription": "Cache repeated tool definitions and conversation history (Bedrock `cachePoint`) to reduce cost and latency on native Converse requests. Only applies to Claude/Nova models — ignored for other model families."
+            "markdownDescription": "Cache repeated tool definitions and conversation history (Amazon Bedrock `cachePoint`) to reduce cost and latency on native Converse requests. Only applies to Claude/Nova models — ignored for other model families."
           },
           "aws-bedrock.assumeLongContextClaudeModels": {
             "type": "boolean",
@@ -277,7 +304,7 @@
         }
       },
       {
-        "title": "AWS Bedrock › Model Metadata",
+        "title": "Amazon Bedrock (Copilot Chat) › Model Metadata",
         "order": 4,
         "properties": {
           "aws-bedrock.modelMetadataSource": {
@@ -292,7 +319,7 @@
               "Additionally fetch a public model registry (litellm) for more accurate limits — mainly useful for non-Claude Mantle models."
             ],
             "default": "none",
-            "description": "Where to source model capability and token-limit metadata beyond what Bedrock's own APIs and this extension's built-in heuristics provide."
+            "description": "Where to source model capability and token-limit metadata beyond what Amazon Bedrock's own APIs and this extension's built-in heuristics provide."
           },
           "aws-bedrock.modelMetadataUrl": {
             "type": "string",

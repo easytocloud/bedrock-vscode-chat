@@ -12,7 +12,7 @@ All verification tests have passed:
 ### Testing with the VS Code Extension
 
 #### Prerequisites
-1. AWS Bedrock API credentials configured
+1. Amazon Bedrock API credentials configured
 2. VS Code installed
 3. This repository cloned locally
 
@@ -26,7 +26,7 @@ npm run compile  # Compile TypeScript to JavaScript
 Then in VS Code:
 1. Press `F5` to start the debugger
 2. A new VS Code window will open with the extension loaded
-3. You should see "AWS Bedrock (Mantle)" in the chat provider dropdown
+3. You should see "Amazon Bedrock Mantle" in the chat provider dropdown
 
 #### Step 2: Enable Debug Logging
 
@@ -38,13 +38,13 @@ Enable verbose logging in VS Code settings:
 }
 ```
 
-Then check the "AWS Bedrock" output channel (View → Output → AWS Bedrock) for detailed logs.
+Then check the "Amazon Bedrock (Copilot Chat)" output channel (View → Output → Amazon Bedrock (Copilot Chat)) for detailed logs.
 
 #### Step 3: Reproduce the Multi-turn Scenario
 
 This is what demonstrates the fix working:
 
-1. **Start a new chat** with an AWS Bedrock Converse API model (like Claude)
+1. **Start a new chat** with an Amazon Bedrock Converse API model (like Claude)
 2. **Ask a question that triggers tool use:**
    ```
    "What's the current weather in New York? Please use the weather tool to find out."
@@ -87,7 +87,7 @@ the code detected that history has tool blocks (`historyHasTools=true`) and pres
 **Problem:**
 - Tool result blocks were stripped from message history if the current request didn't include tool config
 - This caused orphaned tool call blocks with missing results
-- Bedrock API validation would fail
+- Amazon Bedrock API validation would fail
 
 **Solution:**
 The fix adds a check: `const hasTools = !!toolConfig || hasToolHistory(options.messages);`
@@ -121,9 +121,9 @@ node test-implementation.js
 
 Both should show ✅ PASS.
 
-### Testing with Real Bedrock API (Advanced)
+### Testing with the Real Amazon Bedrock API (Advanced)
 
-To test against actual AWS Bedrock:
+To test against the actual Amazon Bedrock service:
 
 1. Configure AWS credentials:
    ```bash
@@ -131,7 +131,7 @@ To test against actual AWS Bedrock:
    ```
 
 2. In the debug extension:
-   - Choose a **native Bedrock Converse model** (e.g., "Claude 3 Haiku (Bedrock)")
+   - Choose a **native Amazon Bedrock Converse model** (e.g., "Claude 3 Haiku (Native)")
    - Ensure you have a tool-compatible model
    - Run the multi-turn scenario above
 

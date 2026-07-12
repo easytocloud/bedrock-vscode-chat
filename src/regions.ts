@@ -5,7 +5,7 @@
  * with these lists when they change — package.json can't import this module at
  * packaging time.
  *
- * Native Bedrock (bedrock-runtime) and Mantle (bedrock-mantle) are deployed to
+ * Native Amazon Bedrock (bedrock-runtime) and Mantle (bedrock-mantle) are deployed to
  * different, non-overlapping-by-superset region sets — Mantle is available in a
  * strict subset. Cross-checked against AWS's own region-availability-by-endpoint
  * docs on 2026-07-11: https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints-region-availability.html
@@ -16,7 +16,7 @@ export interface AwsRegionOption {
 	label: string;
 }
 
-/** Regions where the native Bedrock (Converse/Invoke) backend is available. */
+/** Regions where the native Amazon Bedrock (Converse/Invoke) backend is available. */
 export const AWS_BEDROCK_REGIONS: AwsRegionOption[] = [
 	{ value: "us-east-1", label: "US East (N. Virginia)" },
 	{ value: "us-east-2", label: "US East (Ohio)" },

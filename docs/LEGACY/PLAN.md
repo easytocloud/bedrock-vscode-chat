@@ -1,11 +1,11 @@
-# AWS Bedrock GitHub Copilot Chat Extension - Implementation Plan
+# GitHub Copilot Chat Model Provider for Amazon Bedrock - Implementation Plan
 
 **Date**: February 5, 2026  
 **Status**: Released
 
 ## Overview
 
-Build a VS Code extension that integrates AWS Bedrock models via Mantle's OpenAI-compatible Chat Completions API. This extension enables users to interact with 26+ Bedrock models directly in GitHub Copilot Chat.
+Build a VS Code extension that integrates Amazon Bedrock models via Mantle's OpenAI-compatible Chat Completions API. This extension enables users to interact with 26+ Amazon Bedrock models directly in GitHub Copilot Chat.
 
 ## Architecture
 
@@ -19,7 +19,7 @@ Build a VS Code extension that integrates AWS Bedrock models via Mantle's OpenAI
 
 2. **Extension Entry** (`src/extension.ts`)
    - Registers the provider with vendor ID `"aws-bedrock"`
-   - Manages Bedrock API key authentication via SecretStorage
+   - Manages Amazon Bedrock API key authentication via SecretStorage
    - Provides configuration commands
 
 3. **Utilities** (`src/utils.ts`)
@@ -30,7 +30,7 @@ Build a VS Code extension that integrates AWS Bedrock models via Mantle's OpenAI
 
 4. **Types** (`src/types.ts`)
    - OpenAI API interfaces
-   - Bedrock-specific types
+   - Amazon Bedrock-specific types
    - Provider state types
 
 ## API Details
@@ -59,7 +59,7 @@ Build a VS Code extension that integrates AWS Bedrock models via Mantle's OpenAI
 - ap-southeast-3 (Jakarta)
 - sa-east-1 (São Paulo)
 
-**Authentication**: Bearer token (Bedrock API Key from AWS Console)
+**Authentication**: Bearer token (Amazon Bedrock API Key from the AWS console)
 
 ### Available Models (26 total)
 
@@ -148,7 +148,7 @@ Examples:
     "type": "string",
     "enum": ["us-east-1", "us-east-2", "us-west-2", ...],
     "default": "us-east-1",
-   "description": "AWS region for Bedrock (Mantle + native)"
+   "description": "AWS region for Amazon Bedrock (Mantle + native)"
   },
   "aws-bedrock.showAllModels": {
     "type": "boolean",
@@ -160,7 +160,7 @@ Examples:
 
 ### Secrets (SecretStorage)
 
-- `bedrock.apiKey`: Bedrock API Key from AWS Console
+- `bedrock.apiKey`: Amazon Bedrock API Key from the AWS console
 
 ### Commands
 
@@ -172,7 +172,7 @@ Examples:
 
 ### 1. Authentication
 **Decision**: Support Mantle API key and AWS credential authentication  
-**Rationale**: API key is simplest for Mantle; AWS credentials allow native Bedrock and Mantle SigV4
+**Rationale**: API key is simplest for Mantle; AWS credentials allow native Amazon Bedrock and Mantle SigV4
 
 ### 2. API Choice
 **Decision**: Use Chat Completions API (not Responses API)  
@@ -317,7 +317,7 @@ Key patterns adapted:
 
 ## Resources
 
-- [AWS Bedrock Mantle Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html)
+- [Amazon Bedrock Mantle Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html)
 - [VSCode Language Model API](https://code.visualstudio.com/api/references/vscode-api#lm)
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
 - [HuggingFace VSCode Extension](https://github.com/huggingface/huggingface-vscode-chat)

@@ -5,7 +5,7 @@
  * This is a distinct API surface from Mantle's OpenAI-compatible Chat Completions
  * API (chatCompletions.ts-equivalent logic in mantleProvider.ts) — different path,
  * different auth header shape, different request/response format (Anthropic-native,
- * not OpenAI-native). No Claude model supports Chat Completions on any Bedrock
+ * not OpenAI-native). No Claude model supports Chat Completions on any Amazon Bedrock
  * endpoint; a subset of Claude models support this Messages API on Mantle instead.
  * Verified against AWS's API-compatibility-by-model docs on 2026-07-11:
  * https://docs.aws.amazon.com/bedrock/latest/userguide/models-api-compatibility.html
@@ -205,7 +205,7 @@ export async function sendMantleMessage(options: {
 		};
 	} else {
 		if (!options.apiKey) {
-			throw new Error("AWS Bedrock API key is required");
+			throw new Error("Amazon Bedrock API key is required");
 		}
 		headers = {
 			"x-api-key": options.apiKey,
@@ -235,7 +235,7 @@ export async function sendMantleMessage(options: {
 			const errorText = await response.text();
 			options.log?.(`Mantle Messages API error body (truncated 2000 chars): ${errorText.slice(0, 2000)}`);
 			if (response.status === 401) {
-				throw new Error("Invalid Bedrock API key/credentials for Mantle Messages API.");
+				throw new Error("Invalid Amazon Bedrock API key/credentials for Mantle Messages API.");
 			} else if (response.status === 429) {
 				throw new Error("Rate limit exceeded. Please try again later.");
 			}

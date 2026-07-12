@@ -1,12 +1,12 @@
 /**
- * AWS Bedrock Native Language Model Provider
- * Implements VSCode's LanguageModelChatProvider using AWS Bedrock's native
+ * Amazon Bedrock Native Language Model Provider
+ * Implements VSCode's LanguageModelChatProvider using Amazon Bedrock's native
  * Converse API (bedrock-runtime, via @aws-sdk/client-bedrock-runtime).
  *
- * This is a separate AWS Bedrock endpoint from Mantle (see MantleProvider in
+ * This is a separate Amazon Bedrock endpoint from Mantle (see MantleProvider in
  * mantleProvider.ts) — broader region coverage, AWS-credential-only auth, and
  * full Anthropic Claude support (Claude is not available through Mantle's Chat
- * Completions API on any Bedrock endpoint).
+ * Completions API on any Amazon Bedrock endpoint).
  */
 
 import * as vscode from "vscode";
@@ -98,7 +98,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		if (tools) {
 			model.capabilities.supportsToolCalling = true;
 		}
-		// Vision support comes from Bedrock's own ListFoundationModels input modalities
+		// Vision support comes from Amazon Bedrock's own ListFoundationModels input modalities
 		// (authoritative), so external metadata's vision flag is intentionally not applied here.
 	}
 
@@ -191,7 +191,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 
 		let nativeModels: ParsedModelInfo[] = [];
 		try {
-			this.logDebug(`Listing native Bedrock models in ${region} (profile=${this.awsProfile() ?? "default"})`);
+			this.logDebug(`Listing native Amazon Bedrock models in ${region} (profile=${this.awsProfile() ?? "default"})`);
 			nativeModels = await listNativeBedrockModels({
 				region,
 				awsProfile: this.awsProfile(),
@@ -223,7 +223,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 				"native model discovery requires valid AWS credentials with bedrock:ListFoundationModels. If using SSO, run `aws sso login` and ensure your profile is configured correctly."
 			);
 			if (!options.silent) {
-				vscode.window.showErrorMessage(`Failed to list native Bedrock models (AWS credentials needed): ${message}`);
+				vscode.window.showErrorMessage(`Failed to list native Amazon Bedrock models (AWS credentials needed): ${message}`);
 			}
 		}
 
@@ -251,7 +251,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 
 		this._models = nativeModels;
 		const models = this._models.map((m) => this.toLanguageModelChatInformation(m));
-		this.logAlways(`Returning ${models.length} native Bedrock models to VSCode`);
+		this.logAlways(`Returning ${models.length} native Amazon Bedrock models to VSCode`);
 		return models;
 	}
 
@@ -263,10 +263,10 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		if (explicitMaxInput && explicitMaxInput > 0) {
 			return {
 				id: model.id,
-				name: `${model.displayName} (Bedrock)`,
+				name: `${model.displayName} (Native)`,
 				family: "aws-bedrock",
 				version: "1.0.0",
-				tooltip: "AWS Bedrock (native Converse API)",
+				tooltip: "Amazon Bedrock — native Converse API",
 				maxInputTokens: explicitMaxInput,
 				maxOutputTokens: maxOutput,
 				capabilities: {
@@ -283,10 +283,10 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 
 		return {
 			id: model.id,
-			name: `${model.displayName} (Bedrock)`,
+			name: `${model.displayName} (Native)`,
 			family: "aws-bedrock",
 			version: "1.0.0",
-			tooltip: "AWS Bedrock (native Converse API)",
+			tooltip: "Amazon Bedrock — native Converse API",
 			maxInputTokens: maxInput,
 			maxOutputTokens: safeMaxOutput,
 			capabilities: {

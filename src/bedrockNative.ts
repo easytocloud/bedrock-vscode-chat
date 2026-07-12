@@ -407,7 +407,7 @@ function convertVscodeMessagesToBedrock(
 	const outMessages: Message[] = [];
 
 	const pushTextIfNonEmpty = (blocks: ContentBlock[], text: string) => {
-		// Bedrock Converse rejects empty text blocks.
+		// Amazon Bedrock Converse rejects empty text blocks.
 		if (text.trim().length === 0) {
 			return;
 		}
@@ -490,7 +490,7 @@ function convertVscodeMessagesToBedrock(
 
 	// Mark a cache checkpoint at the end of the second-to-last message, i.e. everything
 	// except the newest turn. That prefix is identical to what was sent last turn, so on
-	// each subsequent request Bedrock can reuse the cached prefix instead of reprocessing
+	// each subsequent request Amazon Bedrock can reuse the cached prefix instead of reprocessing
 	// the whole (ever-growing) conversation history. Below Anthropic's per-model minimum
 	// token count this is simply a no-op, not an error, so it's safe to always attempt.
 	if (options.includeCachePoint && outMessages.length >= 2) {
@@ -524,7 +524,7 @@ export function convertVscodeToolsToBedrockToolConfig(
 	const convertedTools: ToolConfiguration["tools"] = tools
 		.filter((t) => t.name) // Filter out tools without names
 		.map((t) => {
-			// Bedrock requires a non-empty inputSchema. Provide a minimal valid schema if missing.
+			// Amazon Bedrock requires a non-empty inputSchema. Provide a minimal valid schema if missing.
 			let schema = t.inputSchema as Record<string, unknown> | undefined;
 			if (!schema || typeof schema !== "object" || Object.keys(schema).length === 0) {
 				schema = { type: "object", properties: {}, required: [] };
@@ -566,7 +566,7 @@ export async function converseOnce(options: {
 	 * discovery prewarmed) instead of learning this reactively from a failed request.
 	 */
 	requiresInferenceProfile?: boolean;
-	/** Whether to insert Bedrock prompt-cache checkpoints. Ignored for model families that don't support it. */
+	/** Whether to insert Amazon Bedrock prompt-cache checkpoints. Ignored for model families that don't support it. */
 	enablePromptCaching?: boolean;
 	messages: readonly vscode.LanguageModelChatRequestMessage[];
 	tools: readonly vscode.LanguageModelChatTool[] | undefined;
@@ -589,14 +589,14 @@ export async function converseOnce(options: {
 	});
 
 	// Prompt caching (cachePoint) is only supported by Anthropic Claude and Amazon Nova
-	// models on Bedrock today; other families (Llama, Mistral, DeepSeek, Qwen, ...) reject
+	// models on Amazon Bedrock today; other families (Llama, Mistral, DeepSeek, Qwen, ...) reject
 	// the field. Gate on the model family rather than sending it unconditionally.
 	const modelFamilySupportsCaching = /anthropic\.claude|amazon\.nova/i.test(options.modelId);
 	const includeCachePoint = (options.enablePromptCaching ?? true) && modelFamilySupportsCaching;
 
 	const toolConfig = convertVscodeToolsToBedrockToolConfig(options.tools, { includeCachePoint });
 	// IMPORTANT: Always preserve tool history (toolUse/toolResult blocks) from message history,
-	// even if the current request doesn't include tools. Bedrock API requires that if a previous
+	// even if the current request doesn't include tools. Amazon Bedrock API requires that if a previous
 	// toolUse block exists in the history, its corresponding toolResult block must also be present.
 	// Stripping tool results would cause validation errors like:
 	// "Expected toolResult blocks at messages.43.content for the following Ids: ..."

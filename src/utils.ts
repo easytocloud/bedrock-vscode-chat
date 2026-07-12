@@ -175,7 +175,7 @@ export function validateRequest(
 	}
 
 	// NOTE: This only validates that calls have matching results in the message sequence.
-	// The Bedrock API has additional constraints: if message history contains tool blocks,
+	// The Amazon Bedrock API has additional constraints: if message history contains tool blocks,
 	// they must be properly structured within the message context. The bedrockNative.ts
 	// converter now ensures this by preserving tool blocks if they exist in history.
 	return { valid: true };
@@ -234,7 +234,7 @@ export function inferModelCapabilities(modelId: string): ModelCapabilities {
 		lowerModelId.includes("titan") ||
 		// VS Code's chat model picker only shows tool-capable models in Agent mode (models
 		// without tool calling are hidden there entirely, not just downgraded) — these
-		// families support tool use on native Bedrock Converse but don't carry a parameter
+		// families support tool use on native Amazon Bedrock Converse but don't carry a parameter
 		// count in their model ID and were missing from this list, making them invisible in
 		// Agent mode from the very first launch with no way to self-correct via runtime probing.
 		lowerModelId.includes("nova") ||
@@ -315,7 +315,7 @@ export function inferTokenLimits(
 	const lowerModelId = modelId.toLowerCase();
 	const assumeLongContext = options.assumeLongContextClaudeModels ?? true;
 
-	// Claude models. Bedrock model IDs may carry a cross-region inference-profile
+	// Claude models. Amazon Bedrock model IDs may carry a cross-region inference-profile
 	// prefix (us./eu./apac./jp./au./global.) before "anthropic.claude-...", so we
 	// match on "claude" anywhere rather than requiring it at the start.
 	if (lowerModelId.includes("claude")) {

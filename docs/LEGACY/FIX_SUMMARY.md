@@ -2,7 +2,7 @@
 
 ### The Problem (Before)
 
-In multi-turn conversations with Bedrock's Converse API, users would encounter:
+In multi-turn conversations with Amazon Bedrock's Converse API, users would encounter:
 
 ```
 ValidationException: Expected toolResult blocks at messages.43.content for the following Ids: 
@@ -16,7 +16,7 @@ tooluse_OzWmhgspl4SrdN4hEiCSkr, tooluse_4vApg8VZAwbKkfYvMSyW9P
 2. Turn 4-43: Regular conversation, then request where model doesn't need tools
 3. When `toolConfig` is undefined/not sent in request, the conversion logic would set `allowToolBlocks: false`
 4. This stripped all tool blocks from message history, leaving orphaned `toolUse` blocks
-5. Bedrock API validation failed: "You have toolUse blocks but no corresponding toolResult blocks"
+5. Amazon Bedrock API validation failed: "You have toolUse blocks but no corresponding toolResult blocks"
 
 ### The Solution (After)
 

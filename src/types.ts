@@ -1,5 +1,5 @@
 /**
- * TypeScript type definitions for AWS Bedrock Mantle OpenAI-compatible API
+ * TypeScript type definitions for the Amazon Bedrock Mantle OpenAI-compatible API
  */
 
 /**
@@ -173,7 +173,7 @@ export interface ParsedModelInfo {
 	/**
 	 * Underlying model identifier used when invoking the backend.
 	 * For Mantle: the OpenAI-compatible model name.
-	 * For native Bedrock: the Bedrock modelId (or an inference profile identifier when required).
+	 * For native Amazon Bedrock: the Amazon Bedrock modelId (or an inference profile identifier when required).
 	 */
 	modelId: string;
 	backend: ModelBackend;
@@ -188,7 +188,7 @@ export interface ParsedModelInfo {
 	maxOutputTokens: number;
 	capabilities: ModelCapabilities;
 	/**
-	 * Native Bedrock only: true when discovery found a cross-region inference profile
+	 * Native Amazon Bedrock only: true when discovery found a cross-region inference profile
 	 * that contains this model, meaning direct on-demand invocation by model ID is
 	 * expected to fail and the profile identifier should be used instead.
 	 */

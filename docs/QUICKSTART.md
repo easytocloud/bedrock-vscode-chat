@@ -17,14 +17,14 @@ Press `F5` in VS Code to open the Extension Development Host
 
 ### 4. Configure Mantle Authentication (Optional)
 1. In the Extension Development Host window, open Command Palette (`Cmd+Shift+P`)
-2. Run: `Manage AWS Bedrock`
+2. Run: `Manage Native Provider (Converse API)`
 3. Select "Enter API Key (Mantle)" or configure "AWS Credentials"
-4. Paste your API key from [AWS Bedrock Console](https://console.aws.amazon.com/bedrock/) if using API key
+4. Paste your API key from the [Amazon Bedrock console](https://console.aws.amazon.com/bedrock/) if using API key
 
 ### 5. Test the Extension
 1. Open GitHub Copilot Chat (`Cmd+Shift+I`)
 2. Click the model picker dropdown
-3. Select an AWS Bedrock model (e.g., "OpenAI GPT OSS 120B")
+3. Select an Amazon Bedrock model (e.g., "OpenAI GPT OSS 120B")
 4. Start chatting!
 
 ## Development Workflow
@@ -64,7 +64,7 @@ Try these models for different use cases:
 
 ### Models Not Loading
 - Verify API key is entered correctly
-- Check region setting (Settings → AWS Bedrock → Region)
+- Check region setting (Settings → Amazon Bedrock (Copilot Chat) → Region)
 - Look for errors in Developer Tools (Help → Toggle Developer Tools)
 
 ### Changes Not Reflecting

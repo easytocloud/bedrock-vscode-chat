@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-AWS Bedrock APIs (`ListFoundationModels`, `GetFoundationModel`) do **NOT** provide:
+Amazon Bedrock APIs (`ListFoundationModels`, `GetFoundationModel`) do **NOT** provide:
 - Context window size / token limits
 - Tool calling / function calling support  
 - Maximum input/output tokens
@@ -14,7 +14,7 @@ They **DO** provide:
 
 ## Current Multi-Tier Approach (RECOMMENDED)
 
-###  1. AWS Bedrock API (Authoritative for Vision)
+###  1. Amazon Bedrock API (Authoritative for Vision)
 **Source**: `ListFoundationModels` API → `inputModalities`
 
 ```typescript
@@ -80,7 +80,7 @@ function inferModelCapabilities(modelId: string): ModelCapabilities {
 
 ## Why This Is The Best We Can Do
 
-AWS Bedrock team intentionally does **NOT** expose:
+The Amazon Bedrock team intentionally does **NOT** expose:
 - Tool calling in model metadata (models vary by region/version)
 - Token limits (considered implementation details that may change)
 - Detailed capability matrices
@@ -103,7 +103,7 @@ The extension must rely on:
 - 📝 Build telemetry to report actual capabilities back for refinement
 - 📝 Create per-model override configuration for users
 
-### LONG TERM (AWS Bedrock Feature Request)
+### LONG TERM (Amazon Bedrock Feature Request)
 - 📧 Request AWS add `supportsToolCalling` and `tokenLimits` to `FoundationModelSummary`
 - 📧 Ask for model capability matrix API endpoint
 
@@ -116,4 +116,4 @@ There is no "reliable programmatic way" to get all capabilities from AWS alone. 
 2. LiteLLM metadata (tokens, tool hints)
 3. Runtime probing (verification)
 
-...is the **best possible solution** given AWS Bedrock's current API limitations.
+...is the **best possible solution** given Amazon Bedrock's current API limitations.
