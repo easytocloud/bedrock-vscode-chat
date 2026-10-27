@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import type { Message, ReasoningContentBlock } from "@aws-sdk/client-bedrock-runtime";
 import {
 	ReasoningCache,
+	buildThinkingFields,
+	demandsAdaptiveThinking,
+	effortForBudget,
 	attachReasoning,
 	looksLikeThinkingRejection,
 	planThinking,
@@ -97,4 +100,30 @@ test("attachReasoning tolerates missing thinking in earlier finished turns", () 
 	assert.equal(complete, true);
 	assert.equal(messages[1].content!.length, 1); // old turn left alone
 	assert.ok(messages[5].content![0].reasoningContent);
+});
+
+test("adaptive thinking: field shape, effort mapping and rejection detection", () => {
+	assert.deepEqual(buildThinkingFields("enabled", 4096), { thinking: { type: "enabled", budget_tokens: 4096 } });
+	assert.deepEqual(buildThinkingFields("adaptive", 4096), { thinking: { type: "adaptive" }, output_config: { effort: "medium" } });
+	assert.equal(effortForBudget(1024), "low");
+	assert.equal(effortForBudget(8192), "medium");
+	assert.equal(effortForBudget(30000), "high");
+	assert.equal(
+		demandsAdaptiveThinking(new Error('"thinking.type.enabled" is not supported for this model. Use "thinking.type.adaptive"')),
+		true
+	);
+	assert.equal(demandsAdaptiveThinking(new Error("budget_tokens must be >= 1024")), false);
+});
+
+test("attachReasoning with strict:false tolerates a tool call that came with no thinking", () => {
+	const { complete } = attachReasoning(
+		[
+			{ role: "user", content: [{ text: "hi" }] },
+			{ role: "assistant", content: [use("a")] },
+			{ role: "user", content: [res("a")] },
+		],
+		new ReasoningCache(),
+		{ strict: false }
+	);
+	assert.equal(complete, true);
 });
