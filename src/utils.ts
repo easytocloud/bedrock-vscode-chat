@@ -292,7 +292,7 @@ export function isHiddenWhenNotShowAll(modelId: string): boolean {
  * generation number — e.g. sonnet-4 and sonnet-4-6 support 1M but sonnet-4-5 (released
  * between them) is capped at 200K — so it can't be derived from a numeric-version regex
  * and has to be a maintained list. Cross-checked against litellm's registry (BerriAI/litellm
- * model_prices_and_context_window.json) on 2026-07-11; update this list when a new Claude
+ * model_prices_and_context_window.json) on 2026-10-27; update this list when a new Claude
  * release changes its context window, since aws-bedrock.modelMetadataSource defaults to
  * "none" and won't fetch that registry automatically.
  */
@@ -303,6 +303,10 @@ const LONG_CONTEXT_CLAUDE_MODELS: Array<{ pattern: string; maxOutputTokens: numb
 	{ pattern: "claude-opus-4-6", maxOutputTokens: 128000 },
 	{ pattern: "claude-opus-4-7", maxOutputTokens: 128000 },
 	{ pattern: "claude-opus-4-8", maxOutputTokens: 128000 },
+	{ pattern: "claude-opus-5", maxOutputTokens: 128000 },
+	{ pattern: "claude-haiku-5", maxOutputTokens: 128000 },
+	{ pattern: "claude-fable-5", maxOutputTokens: 128000 },
+	{ pattern: "claude-mythos-5", maxOutputTokens: 128000 },
 ];
 
 /**
