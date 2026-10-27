@@ -5,12 +5,23 @@ All notable changes to the GitHub Copilot Chat Model Provider for Amazon Bedrock
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-10-27
 
 ### Added
-- **Extended thinking** for Claude 3.7+ on the native provider (`aws-bedrock.enableExtendedThinking`, off by default; budget via `aws-bedrock.thinkingBudgetTokens`). Signed thinking blocks are cached per tool call and replayed while a tool loop is in progress, as the API requires. If a replay isn't possible (e.g. after a reload) or the model rejects thinking, the request is sent without it. The thinking text isn't shown in chat because VS Code's model provider API has no way to display it. Mantle is not yet covered.
+- **Extended thinking** for Claude 3.7+ on the native provider (`aws-bedrock.enableExtendedThinking`, off by default; budget via `aws-bedrock.thinkingBudgetTokens`). Newer models that require adaptive thinking (e.g. Sonnet 5.5, Opus 4.8) are detected automatically and remembered per model. Signed thinking blocks are cached per tool call and replayed while a tool loop is in progress, as the API requires; if that isn't possible, or the model rejects thinking, the request is sent without it. The thinking text isn't shown in chat because VS Code's model provider API has no way to display it. Mantle is not yet covered.
 - **Extended prompt caching** (`aws-bedrock.promptCacheTtl`: `5m` default, or `1h`) for Claude 4.5+; other models use 5m, and a rejected TTL falls back to 5m.
-- Unit tests for the helpers in `utils.ts`, thinking and prompt caching.
+- Cache lifetime, extended thinking and thinking budget are available in the configuration panel.
+- **Rule-based Claude model knowledge**: context/output limits, thinking, 1h cache and Mantle Messages support are derived from the model's generation instead of hard-coded lists, so new Claude releases work without an update. A weekly workflow compares these rules with the public litellm registry and opens an issue on drift.
+- CI workflow (type-check, lint, bundle, tests) on every pull request, and unit tests for the helpers in `utils.ts`, thinking, prompt caching and model rules.
+
+### Fixed
+- Opus 4 / 4.1 max output is 32K (was reported as 64K), and Sonnet 4's standard context window is 200K (was reported as 1M).
+- Opus 5.x and Haiku 5.x are no longer hidden from Mantle users.
+- Highlighted rows, hint text and buttons in the configuration panel are readable in light and high-contrast themes (they used dark-theme colors).
+
+### Changed
+- The "Show 'Thinking…' while waiting" checkbox is now "Show a waiting placeholder" to avoid confusion with extended thinking.
+- Dev toolchain: ESLint 10, TypeScript 6.0, `@types/node` 22.
 
 ## [0.6.4] - 2026-10-27
 

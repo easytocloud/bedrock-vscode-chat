@@ -2,7 +2,7 @@
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "GitHub Copilot Chat Model Provider for Amazon Bedrock",
   "description": "Use Amazon Bedrock models in GitHub Copilot Chat with streaming, tool calling, and multi-region support",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "publisher": "easytocloud",
   "icon": "assets/icon.png",
   "repository": {
@@ -312,7 +312,10 @@
             "type": "string",
             "order": 4,
             "default": "5m",
-            "enum": ["5m", "1h"],
+            "enum": [
+              "5m",
+              "1h"
+            ],
             "enumDescriptions": [
               "Default: cached prompt prefixes expire after 5 minutes of inactivity.",
               "Extended: keep cached prefixes for 1 hour. Cache writes cost more than the default, so this pays off for long sessions with pauses over 5 minutes. Only applies to Claude 4.5 and newer; other models use 5m."
