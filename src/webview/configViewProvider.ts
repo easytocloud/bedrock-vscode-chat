@@ -192,6 +192,9 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
 			sendTools: config.get<boolean>("sendTools", true),
 			emitPlaceholders: config.get<boolean>("emitPlaceholders", true),
 			enablePromptCaching: config.get<boolean>("enablePromptCaching", true),
+			promptCacheTtl: config.get<string>("promptCacheTtl", "5m"),
+			enableExtendedThinking: config.get<boolean>("enableExtendedThinking", false),
+			thinkingBudgetTokens: config.get<number>("thinkingBudgetTokens", 4096),
 			assumeLongContextClaudeModels: config.get<boolean>("assumeLongContextClaudeModels", true),
 
 			// Model metadata settings
@@ -619,6 +622,29 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
       </div>
 
       <div class="form-group">
+        <label class="form-label">Cache Lifetime</label>
+        <select class="form-control" id="promptCacheTtl" data-key="aws-bedrock.promptCacheTtl">
+          <option value="5m" selected>5 minutes (default)</option>
+          <option value="1h">1 hour (extended)</option>
+        </select>
+        <span class="form-label-hint">1 hour suits long sessions with pauses; cache writes cost more. Claude 4.5+ only, other models use 5 minutes</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Extended Thinking</label>
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableExtendedThinking" data-key="aws-bedrock.enableExtendedThinking">
+          <label for="enableExtendedThinking">Let Claude think before answering</label>
+        </div>
+        <span class="form-label-hint">Native Claude 3.7+ only. Adds latency and output tokens; the thinking text isn't shown in chat</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Thinking Budget (tokens)</label>
+        <input type="number" class="form-control" id="thinkingBudgetTokens" data-key="aws-bedrock.thinkingBudgetTokens" min="1024" step="1024" value="4096">
+      </div>
+
+      <div class="form-group">
         <label class="form-label">Long Context Claude</label>
         <div class="checkbox-group">
           <input type="checkbox" id="assumeLongContextClaudeModels" data-key="aws-bedrock.assumeLongContextClaudeModels" checked>
@@ -722,6 +748,9 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
         document.getElementById('sendTools').checked = state.sendTools;
         document.getElementById('emitPlaceholders').checked = state.emitPlaceholders;
         document.getElementById('enablePromptCaching').checked = state.enablePromptCaching;
+        document.getElementById('promptCacheTtl').value = state.promptCacheTtl;
+        document.getElementById('enableExtendedThinking').checked = state.enableExtendedThinking;
+        document.getElementById('thinkingBudgetTokens').value = state.thinkingBudgetTokens;
         document.getElementById('assumeLongContextClaudeModels').checked = state.assumeLongContextClaudeModels;
 
         document.getElementById('modelMetadataSource').value = state.modelMetadataSource;
