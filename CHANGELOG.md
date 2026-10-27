@@ -5,6 +5,17 @@ All notable changes to the GitHub Copilot Chat Model Provider for Amazon Bedrock
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-10-27
+
+### Fixed
+- **Tool calling failed with `Expected toolResult blocks` (#3).** Histories where a tool call wasn't immediately followed by its result (cancelled tools, summarized context, late results) are now repaired before being sent to Amazon Bedrock instead of being rejected: results are moved first in their message, orphans dropped, and unanswered calls get an error result.
+- **Test Connection now reports the real failure reason** (missing Mantle API key, HTTP 401/other errors, AWS credential errors) and warns when zero models are returned, instead of failing silently.
+- **Context/output limits for Claude Opus 5, Haiku 5, Fable 5 and Mythos 5** are now 1M / 128K instead of falling back to 200K / 64K.
+
+### Changed
+- Dependencies updated within their semver ranges (`npm audit`: 0 vulnerabilities).
+- Added unit tests for tool-history repair (`npm test`).
+
 ## [0.6.3] - 2026-07-12
 
 ### Changed

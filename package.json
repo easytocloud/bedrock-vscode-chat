@@ -2,7 +2,7 @@
   "name": "bedrock-mantle-vscode-chat",
   "displayName": "GitHub Copilot Chat Model Provider for Amazon Bedrock",
   "description": "Use Amazon Bedrock models in GitHub Copilot Chat with streaming, tool calling, and multi-region support",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "publisher": "easytocloud",
   "icon": "assets/icon.png",
   "repository": {
