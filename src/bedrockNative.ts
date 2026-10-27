@@ -5,12 +5,32 @@ import {
 	ConverseCommand,
 	type ContentBlock,
 	type Message,
+	type ReasoningContentBlock,
 	type ToolConfiguration,
 } from "@aws-sdk/client-bedrock-runtime";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
 import type { ParsedModelInfo } from "./types";
 import { repairToolHistory } from "./toolHistory";
+import {
+	buildCachePoint,
+	effectiveCacheTtl,
+	looksLikeCacheTtlRejection,
+	type PromptCacheTtl,
+} from "./promptCache";
+import {
+	attachReasoning,
+	buildThinkingFields,
+	demandsAdaptiveThinking,
+	looksLikeThinkingRejection,
+	planThinking,
+	supportsExtendedThinking,
+	type ReasoningCache,
+	type ThinkingMode,
+} from "./thinking";
+
+/** Models that told us they need adaptive thinking; remembered so later requests skip the failed attempt. */
+const learnedThinkingMode = new Map<string, ThinkingMode>();
 import { createRequestTimeoutGuard, disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits, isHiddenWhenNotShowAll } from "./utils";
 
 function getCredentials(profile: string | undefined) {
@@ -403,7 +423,7 @@ function hasToolHistory(messages: readonly vscode.LanguageModelChatRequestMessag
 
 function convertVscodeMessagesToBedrock(
 	messages: readonly vscode.LanguageModelChatRequestMessage[],
-	options: { allowToolBlocks: boolean; includeCachePoint: boolean }
+	options: { allowToolBlocks: boolean; includeCachePoint: boolean; cacheTtl: PromptCacheTtl }
 ): { system: undefined; messages: Message[] } {
 	const outMessages: Message[] = [];
 
@@ -500,7 +520,7 @@ function convertVscodeMessagesToBedrock(
 	// token count this is simply a no-op, not an error, so it's safe to always attempt.
 	if (options.includeCachePoint && outMessages.length >= 2) {
 		const target = outMessages[outMessages.length - 2];
-		target.content = [...(target.content ?? []), { cachePoint: { type: "default" } }];
+		target.content = [...(target.content ?? []), buildCachePoint(options.cacheTtl)];
 	}
 
 	return {
@@ -520,7 +540,7 @@ function safeStringify(value: unknown): string {
 
 export function convertVscodeToolsToBedrockToolConfig(
 	tools: readonly vscode.LanguageModelChatTool[] | undefined,
-	options: { includeCachePoint: boolean } = { includeCachePoint: false }
+	options: { includeCachePoint: boolean; cacheTtl?: PromptCacheTtl } = { includeCachePoint: false }
 ): ToolConfiguration | undefined {
 	if (!tools || tools.length === 0) {
 		return undefined;
@@ -553,13 +573,13 @@ export function convertVscodeToolsToBedrockToolConfig(
 	// (see safeStringify's truncation for logging). Caching them avoids reprocessing
 	// the same schema blob on every request for models that support prompt caching.
 	if (options.includeCachePoint) {
-		convertedTools.push({ cachePoint: { type: "default" } });
+		convertedTools.push(buildCachePoint(options.cacheTtl ?? "5m"));
 	}
 
 	return { tools: convertedTools };
 }
 
-export async function converseOnce(options: {
+async function converseOnceAttempt(options: {
 	region: string;
 	awsProfile: string | undefined;
 	userAgent: string;
@@ -573,6 +593,13 @@ export async function converseOnce(options: {
 	requiresInferenceProfile?: boolean;
 	/** Whether to insert Amazon Bedrock prompt-cache checkpoints. Ignored for model families that don't support it. */
 	enablePromptCaching?: boolean;
+	/** Cache lifetime; "1h" is only sent to models that support it and falls back to 5m if rejected. */
+	promptCacheTtl?: PromptCacheTtl;
+	/**
+	 * Claude extended thinking. Ignored for models that don't support it; the cache holds signed
+	 * thinking blocks so they can be replayed alongside the tool calls they preceded.
+	 */
+	thinking?: { budgetTokens: number; cache: ReasoningCache };
 	messages: readonly vscode.LanguageModelChatRequestMessage[];
 	tools: readonly vscode.LanguageModelChatTool[] | undefined;
 	temperature?: number;
@@ -599,33 +626,89 @@ export async function converseOnce(options: {
 	const modelFamilySupportsCaching = /anthropic\.claude|amazon\.nova/i.test(options.modelId);
 	const includeCachePoint = (options.enablePromptCaching ?? true) && modelFamilySupportsCaching;
 
-	const toolConfig = convertVscodeToolsToBedrockToolConfig(options.tools, { includeCachePoint });
+	const cacheTtl = effectiveCacheTtl(options.promptCacheTtl, options.modelId);
+	const toolConfig = convertVscodeToolsToBedrockToolConfig(options.tools, { includeCachePoint, cacheTtl });
 	// IMPORTANT: Always preserve tool history (toolUse/toolResult blocks) from message history,
 	// even if the current request doesn't include tools. Amazon Bedrock API requires that if a previous
 	// toolUse block exists in the history, its corresponding toolResult block must also be present.
 	// Stripping tool results would cause validation errors like:
 	// "Expected toolResult blocks at messages.43.content for the following Ids: ..."
 	const hasTools = !!toolConfig || hasToolHistory(options.messages);
-	const converted = convertVscodeMessagesToBedrock(options.messages, { allowToolBlocks: hasTools, includeCachePoint });
+	const converted = convertVscodeMessagesToBedrock(options.messages, { allowToolBlocks: hasTools, includeCachePoint, cacheTtl });
 
-	const sendConverse = async (modelId: string) => {
+	let thinkingPlan =
+		options.thinking && supportsExtendedThinking(options.modelId)
+			? planThinking(options.thinking.budgetTokens, options.maxTokens)
+			: undefined;
+	let messagesToSend = converted.messages;
+	if (thinkingPlan && options.thinking) {
+		const attached = attachReasoning(converted.messages, options.thinking.cache, {
+			strict: (learnedThinkingMode.get(options.modelId) ?? "enabled") === "enabled",
+		});
+		if (attached.complete) {
+			messagesToSend = attached.messages;
+		} else {
+			options.log?.(
+				"converseOnce: extended thinking skipped for this request — a tool call in the current turn has no cached thinking block (e.g. after a reload)"
+			);
+			thinkingPlan = undefined;
+		}
+	}
+
+	const sendOnce = async (
+		modelId: string,
+		thinking: typeof thinkingPlan,
+		messages: Message[],
+		mode: ThinkingMode = "enabled"
+	) => {
 		const guard = createRequestTimeoutGuard(options.requestTimeoutMs ?? 0);
 		try {
 			return await runtime.send(
 				new ConverseCommand({
 					modelId,
 					system: converted.system,
-					messages: converted.messages,
+					messages,
 					toolConfig,
-					inferenceConfig: {
-						temperature: options.temperature,
-						maxTokens: options.maxTokens,
-					},
+					// Extended thinking requires the default temperature and maxTokens > budget.
+					inferenceConfig: thinking
+						? { maxTokens: thinking.maxTokens }
+						: { temperature: options.temperature, maxTokens: options.maxTokens },
+					additionalModelRequestFields: thinking
+						? (buildThinkingFields(mode, thinking.budgetTokens) as any)
+						: undefined,
 				}),
 				{ abortSignal: guard.controller.signal }
 			);
 		} finally {
 			guard.dispose();
+		}
+	};
+
+	const sendConverse = async (modelId: string) => {
+		let mode = learnedThinkingMode.get(options.modelId) ?? "enabled";
+		try {
+			try {
+				return await sendOnce(modelId, thinkingPlan, messagesToSend, mode);
+			} catch (err) {
+				if (!thinkingPlan || mode !== "enabled" || !demandsAdaptiveThinking(err)) {
+					throw err;
+				}
+				// Newer models take adaptive thinking instead of a fixed budget; learn that once per model.
+				options.log?.(`converseOnce: ${options.modelId} requires adaptive thinking; retrying in adaptive mode`);
+				learnedThinkingMode.set(options.modelId, "adaptive");
+				mode = "adaptive";
+				return await sendOnce(modelId, thinkingPlan, messagesToSend, mode);
+			}
+		} catch (err) {
+			if (!thinkingPlan || !looksLikeThinkingRejection(err)) {
+				throw err;
+			}
+			options.log?.(
+				`converseOnce: ${modelId} rejected extended thinking; retrying without it: ${err instanceof Error ? err.message : String(err)}`
+			);
+			thinkingPlan = undefined;
+			messagesToSend = converted.messages;
+			return sendOnce(modelId, undefined, converted.messages);
 		}
 	};
 
@@ -720,24 +803,29 @@ export async function converseOnce(options: {
 	let reasoning = "";
 	const toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
+	// The thinking block that precedes a response's first tool call, kept so it can be replayed
+	// with that tool call on the next request (see ReasoningCache).
+	let pendingReasoning: ReasoningContentBlock | undefined;
+
 	for (const block of content) {
 		if (block.text) {
 			text += block.text;
 		} else if (block.toolUse) {
+			const id = block.toolUse.toolUseId ?? `call_${Math.random().toString(36).slice(2, 10)}`;
 			toolUses.push({
-				id: block.toolUse.toolUseId ?? `call_${Math.random().toString(36).slice(2, 10)}`,
+				id,
 				name: block.toolUse.name ?? "tool",
 				input: (block.toolUse.input ?? {}) as Record<string, unknown>,
 			});
+			if (pendingReasoning && options.thinking) {
+				options.thinking.cache.set(id, pendingReasoning);
+				pendingReasoning = undefined;
+			}
 		} else if (block.reasoningContent) {
-			// Extended-thinking output. VS Code's stable LanguageModelChatProvider API has no
-			// dedicated response part for reasoning (only text/toolCall/toolResult/data), and
-			// no way to round-trip a reasoning block back into a later request's history — so
-			// we deliberately never *request* thinking (no additionalModelRequestFields) and
-			// don't try to fake multi-turn replay of it here. We still surface it defensively:
-			// if a model or account-level default ever returns reasoningContent anyway, log it
-			// instead of silently discarding it, and let the caller decide whether to show a
-			// placeholder when it's the only content in the response.
+			// VS Code's LanguageModelChatProvider API has no response part for reasoning, so the
+			// text is not shown (only logged, or a placeholder when it's the sole content).
+			// The signed block itself is cached above so a following tool call can replay it.
+			pendingReasoning = block.reasoningContent;
 			const reasoningText = block.reasoningContent.reasoningText?.text;
 			if (reasoningText) {
 				reasoning += reasoningText;
@@ -751,3 +839,19 @@ export async function converseOnce(options: {
 
 	return { text, toolUses, reasoning: reasoning || undefined };
 }
+type ConverseOnceOptions = Parameters<typeof converseOnceAttempt>[0];
+
+export async function converseOnce(options: ConverseOnceOptions): ReturnType<typeof converseOnceAttempt> {
+	try {
+		return await converseOnceAttempt(options);
+	} catch (err) {
+		if (effectiveCacheTtl(options.promptCacheTtl, options.modelId) !== "1h" || !looksLikeCacheTtlRejection(err)) {
+			throw err;
+		}
+		options.log?.(
+			`converseOnce: ${options.modelId} rejected the 1h cache TTL; retrying with the default 5m: ${err instanceof Error ? err.message : String(err)}`
+		);
+		return converseOnceAttempt({ ...options, promptCacheTtl: "5m" });
+	}
+}
+

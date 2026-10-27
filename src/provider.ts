@@ -12,6 +12,7 @@
 import * as vscode from "vscode";
 import type { ParsedModelInfo } from "./types";
 import { converseOnce, listNativeBedrockModels } from "./bedrockNative";
+import { ReasoningCache } from "./thinking";
 import { loadExternalMetadataForModels, type ExternalModelMetadata } from "./externalModelMetadata";
 import { isMantleServedModelId, shouldLog, type LogLevel } from "./utils";
 
@@ -20,6 +21,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 	readonly onDidChangeLanguageModelChatInformation = this._onDidChangeLanguageModelChatInformation.event;
 
 	private _models: ParsedModelInfo[] | null = null;
+	private readonly reasoningCache = new ReasoningCache();
 	/** Reason the most recent model discovery failed, if it did (read by the Test Connection button). */
 	lastDiscoveryError: string | undefined;
 	private _nativeToolSupport = new Map<string, boolean>();
@@ -114,6 +116,21 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 
 	private shouldEmitPlaceholders(): boolean {
 		return this.config.get<boolean>("emitPlaceholders", false);
+	}
+
+	/** Extended-thinking settings for converseOnce, or undefined when the user hasn't enabled it. */
+	private thinkingOptions(): { budgetTokens: number; cache: ReasoningCache } | undefined {
+		if (!this.config.get<boolean>("enableExtendedThinking", false)) {
+			return undefined;
+		}
+		return {
+			budgetTokens: this.config.get<number>("thinkingBudgetTokens", 4096),
+			cache: this.reasoningCache,
+		};
+	}
+
+	private promptCacheTtl(): "5m" | "1h" {
+		return this.config.get<string>("promptCacheTtl", "5m") === "1h" ? "1h" : "5m";
 	}
 
 	private shouldEnablePromptCaching(): boolean {
@@ -361,6 +378,8 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 				modelId: parsed?.modelId ?? model.id,
 				requiresInferenceProfile: parsed?.requiresInferenceProfile,
 				enablePromptCaching: this.shouldEnablePromptCaching(),
+				promptCacheTtl: this.promptCacheTtl(),
+				thinking: this.thinkingOptions(),
 				messages,
 				tools: toolsToSend,
 				temperature,
@@ -404,6 +423,8 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 					modelId: parsed?.modelId ?? model.id,
 					requiresInferenceProfile: parsed?.requiresInferenceProfile,
 					enablePromptCaching: this.shouldEnablePromptCaching(),
+					promptCacheTtl: this.promptCacheTtl(),
+					thinking: this.thinkingOptions(),
 					messages,
 					tools: undefined,
 					temperature,
