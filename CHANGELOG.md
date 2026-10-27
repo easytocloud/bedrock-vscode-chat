@@ -5,6 +5,13 @@ All notable changes to the GitHub Copilot Chat Model Provider for Amazon Bedrock
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Extended thinking** for Claude 3.7+ on the native provider (`aws-bedrock.enableExtendedThinking`, off by default; budget via `aws-bedrock.thinkingBudgetTokens`). Signed thinking blocks are cached per tool call and replayed while a tool loop is in progress, as the API requires. If a replay isn't possible (e.g. after a reload) or the model rejects thinking, the request is sent without it. The thinking text isn't shown in chat because VS Code's model provider API has no way to display it. Mantle is not yet covered.
+- **Extended prompt caching** (`aws-bedrock.promptCacheTtl`: `5m` default, or `1h`) for Claude 4.5+; other models use 5m, and a rejected TTL falls back to 5m.
+- Unit tests for the helpers in `utils.ts`, thinking and prompt caching.
+
 ## [0.6.4] - 2026-10-27
 
 ### Fixed

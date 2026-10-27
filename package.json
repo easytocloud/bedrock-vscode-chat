@@ -295,9 +295,33 @@
             "default": true,
             "markdownDescription": "Cache repeated tool definitions and conversation history (Amazon Bedrock `cachePoint`) to reduce cost and latency on native Converse requests. Only applies to Claude/Nova models — ignored for other model families."
           },
+          "aws-bedrock.enableExtendedThinking": {
+            "type": "boolean",
+            "order": 5,
+            "default": false,
+            "markdownDescription": "Let Claude think step by step before answering (extended thinking) on native Converse requests. Improves results on hard coding and reasoning tasks at the cost of extra latency and output tokens. Only applies to Claude 3.7 and newer models; others ignore it, and a model that rejects it is retried without. The thinking text itself isn't shown in chat — VS Code's model provider API has no way to display it. Temperature is ignored while thinking is on."
+          },
+          "aws-bedrock.thinkingBudgetTokens": {
+            "type": "number",
+            "order": 6,
+            "default": 4096,
+            "minimum": 1024,
+            "markdownDescription": "Maximum tokens Claude may spend thinking when #aws-bedrock.enableExtendedThinking# is on (minimum 1024). Capped automatically so there's always room left for the answer."
+          },
+          "aws-bedrock.promptCacheTtl": {
+            "type": "string",
+            "order": 4,
+            "default": "5m",
+            "enum": ["5m", "1h"],
+            "enumDescriptions": [
+              "Default: cached prompt prefixes expire after 5 minutes of inactivity.",
+              "Extended: keep cached prefixes for 1 hour. Cache writes cost more than the default, so this pays off for long sessions with pauses over 5 minutes. Only applies to Claude 4.5 and newer; other models use 5m."
+            ],
+            "markdownDescription": "How long Amazon Bedrock keeps cached prompt prefixes when #aws-bedrock.enablePromptCaching# is on."
+          },
           "aws-bedrock.assumeLongContextClaudeModels": {
             "type": "boolean",
-            "order": 4,
+            "order": 7,
             "default": true,
             "markdownDescription": "Report a 1,000,000-token context window for the specific Claude models known to support it (Sonnet 4, Sonnet 4.6, Sonnet 5, Opus 4.6+), instead of the standard 200,000. This can't be derived from the model name — context window doesn't increase with every version, e.g. Sonnet 4.5 is capped at 200K even though Sonnet 4 and 4.6 support 1M — so it comes from a small maintained list in the extension. Turn this off if you hit context-length errors for a specific model in your account/region, or if you'd rather rely on #aws-bedrock.modelMetadataSource# for this data."
           }
@@ -347,7 +371,7 @@
     "watch:esbuild": "node config/esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch -p config",
     "package": "npm run check-types && npm run lint && node config/esbuild.js --production",
-    "test": "esbuild test/toolHistory.test.ts --bundle --platform=node --outfile=out/test.js --log-level=error && node --test out/test.js",
+    "test": "esbuild test/*.test.ts --bundle --platform=node --outdir=out/test --alias:vscode=./test/vscode-stub.ts --log-level=error && node --test out/test/*.test.js",
     "lint": "eslint --config config/eslint.config.js src --ext ts"
   },
   "dependencies": {
