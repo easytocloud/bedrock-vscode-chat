@@ -7,14 +7,9 @@ const MIN_ANSWER_TOKENS = 1024;
 const DEFAULT_ANSWER_TOKENS = 8192;
 const MAX_CACHED_REASONING = 200;
 
-/**
- * Claude models that accept `thinking: { type: "enabled", budget_tokens }`: 3.7 and every 4.x/5.x
- * family. A maintained pattern list (like LONG_CONTEXT_CLAUDE_MODELS) since it can't be derived
- * from the model name alone; a model that rejects the field anyway is retried without it.
- */
-export function supportsExtendedThinking(modelId: string): boolean {
-	return /claude-3[-.]7|claude-(opus|sonnet|haiku)-[4-9]|claude-(fable|mythos)-\d/i.test(modelId);
-}
+// Which models accept `thinking: { type: "enabled", budget_tokens }` is rule-based (3.7+); a model that
+// rejects the field anyway is retried without it.
+export { supportsExtendedThinking } from "./claudeModels";
 
 /**
  * Pick a thinking budget and max output size that satisfy the API's rules

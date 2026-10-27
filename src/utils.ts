@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode";
+import { longContextLimits, standardMaxOutput } from "./claudeModels";
 import type {
 	OpenAIChatMessage,
 	OpenAIChatRole,
@@ -288,28 +289,6 @@ export function isHiddenWhenNotShowAll(modelId: string): boolean {
 }
 
 /**
- * Claude models known to support a 1M-token context window. This is NOT a function of
- * generation number — e.g. sonnet-4 and sonnet-4-6 support 1M but sonnet-4-5 (released
- * between them) is capped at 200K — so it can't be derived from a numeric-version regex
- * and has to be a maintained list. Cross-checked against litellm's registry (BerriAI/litellm
- * model_prices_and_context_window.json) on 2026-10-27; update this list when a new Claude
- * release changes its context window, since aws-bedrock.modelMetadataSource defaults to
- * "none" and won't fetch that registry automatically.
- */
-const LONG_CONTEXT_CLAUDE_MODELS: Array<{ pattern: string; maxOutputTokens: number }> = [
-	{ pattern: "claude-sonnet-4-20250514", maxOutputTokens: 64000 },
-	{ pattern: "claude-sonnet-4-6", maxOutputTokens: 64000 },
-	{ pattern: "claude-sonnet-5", maxOutputTokens: 128000 },
-	{ pattern: "claude-opus-4-6", maxOutputTokens: 128000 },
-	{ pattern: "claude-opus-4-7", maxOutputTokens: 128000 },
-	{ pattern: "claude-opus-4-8", maxOutputTokens: 128000 },
-	{ pattern: "claude-opus-5", maxOutputTokens: 128000 },
-	{ pattern: "claude-haiku-5", maxOutputTokens: 128000 },
-	{ pattern: "claude-fable-5", maxOutputTokens: 128000 },
-	{ pattern: "claude-mythos-5", maxOutputTokens: 128000 },
-];
-
-/**
  * Infer token limits from model ID patterns
  */
 export function inferTokenLimits(
@@ -333,18 +312,16 @@ export function inferTokenLimits(
 		if (lowerModelId.includes("claude-3")) {
 			return { contextLength: 200000, maxOutputTokens: 4096 };
 		}
-		const longContext = assumeLongContext
-			? LONG_CONTEXT_CLAUDE_MODELS.find((m) => lowerModelId.includes(m.pattern))
-			: undefined;
+		const longContext = assumeLongContext ? longContextLimits(lowerModelId) : undefined;
 		if (longContext) {
-			return { contextLength: 1000000, maxOutputTokens: longContext.maxOutputTokens };
+			return longContext;
 		}
 		// Anything else with "claude" in the ID is Claude 4.x/5.x or newer (e.g.
 		// claude-opus-4-5, claude-haiku-4-5). Rather than falling back to a conservative
 		// non-Claude default (which silently truncated every current-generation model to
 		// 100K/4096), assume the modern generous limits these models actually ship with.
 		// This will still be overridden by external metadata (litellm) when enabled.
-		return { contextLength: 200000, maxOutputTokens: 64000 };
+		return { contextLength: 200000, maxOutputTokens: standardMaxOutput(lowerModelId) };
 	}
 
 	// Mistral/Mixtral models

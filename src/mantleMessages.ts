@@ -16,33 +16,9 @@ import type { AnthropicContentBlock, AnthropicMessage, AnthropicMessagesRequest,
 import { signMantleRequest } from "./awsAuth";
 import { createRequestTimeoutGuard, generateCallId, tryParseJSONObject } from "./utils";
 
-/**
- * Claude models confirmed to support Mantle's Messages API. This is NOT the same
- * list as "supports Converse/Invoke" (native) — some models here (Mythos 5, Mythos
- * Preview) are Mantle-Messages-*exclusive* (no native access at all), while several
- * native-available Claude models (3 Haiku, 3.5 Haiku, Opus 4.1/4.5/4.6, Sonnet
- * 4/4.5/4.6) are NOT on this list because Mantle doesn't serve them through any API.
- * Maintained list, not derivable from the model ID pattern or from Mantle's /v1/models
- * response (which doesn't expose per-API capability data) — update when AWS adds
- * Messages API support for additional models.
- */
-const MANTLE_MESSAGES_CLAUDE_PATTERNS = [
-	"claude-sonnet-5",
-	"claude-haiku-4-5",
-	"claude-opus-4-7",
-	"claude-opus-4-8",
-	"claude-fable-5",
-	"claude-mythos-5",
-	"claude-mythos-preview",
-];
-
-export function supportsMantleMessagesApi(modelId: string): boolean {
-	const id = modelId.toLowerCase();
-	if (!id.includes("claude")) {
-		return false;
-	}
-	return MANTLE_MESSAGES_CLAUDE_PATTERNS.some((p) => id.includes(p));
-}
+// Which Claude models Mantle serves through its Messages API (some, like Mythos, are Mantle-only;
+// many native Claude models aren't on Mantle at all) is rule-based on the model's generation.
+export { supportsMantleMessagesApi } from "./claudeModels";
 
 /** True for any Claude model, regardless of whether it's usable on Mantle at all. */
 export function isClaudeModelId(modelId: string): boolean {

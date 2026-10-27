@@ -323,7 +323,7 @@
             "type": "boolean",
             "order": 7,
             "default": true,
-            "markdownDescription": "Report a 1,000,000-token context window for the specific Claude models known to support it (Sonnet 4, Sonnet 4.6, Sonnet 5, Opus 4.6+), instead of the standard 200,000. This can't be derived from the model name — context window doesn't increase with every version, e.g. Sonnet 4.5 is capped at 200K even though Sonnet 4 and 4.6 support 1M — so it comes from a small maintained list in the extension. Turn this off if you hit context-length errors for a specific model in your account/region, or if you'd rather rely on #aws-bedrock.modelMetadataSource# for this data."
+            "markdownDescription": "Report a 1,000,000-token context window for the specific Claude models known to support it (Claude 4.6 and newer, including all 5.x), instead of the standard 200,000. This can't be derived from the model name — context window doesn't increase with every version, e.g. Sonnet 4.5 is capped at 200K even though 4.6 supports 1M — so it follows version rules in the extension, checked weekly against a public registry. Turn this off if you hit context-length errors for a specific model in your account/region, or if you'd rather rely on #aws-bedrock.modelMetadataSource# for this data."
           }
         }
       },
@@ -372,6 +372,7 @@
     "watch:tsc": "tsc --noEmit --watch -p config",
     "package": "npm run check-types && npm run lint && node config/esbuild.js --production",
     "test": "esbuild test/*.test.ts --bundle --platform=node --outdir=out/test --alias:vscode=./test/vscode-stub.ts --log-level=error && node --test out/test/*.test.js",
+    "test:drift": "CHECK_MODEL_DRIFT=1 npm test",
     "lint": "eslint --config config/eslint.config.js src --ext ts"
   },
   "dependencies": {

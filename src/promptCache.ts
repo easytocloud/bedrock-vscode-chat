@@ -1,15 +1,11 @@
 import type { CachePointBlock } from "@aws-sdk/client-bedrock-runtime";
+import { supportsExtendedCacheTtl } from "./claudeModels";
 
 export type PromptCacheTtl = "5m" | "1h";
 
-/**
- * Models that accept the extended 1-hour cache TTL on Amazon Bedrock: Claude 4.5 and newer.
- * Older Claude and Amazon Nova only support the default 5-minute cache. A maintained pattern list
- * (like LONG_CONTEXT_CLAUDE_MODELS); a model that rejects the TTL anyway is retried with the default.
- */
-export function supportsExtendedCacheTtl(modelId: string): boolean {
-	return /claude-(opus|sonnet|haiku)-(4-[5-9]|[5-9])|claude-(fable|mythos)-\d/i.test(modelId);
-}
+// Which models accept the 1-hour TTL is rule-based (Claude 4.5+); a model that rejects it anyway is
+// retried with the default.
+export { supportsExtendedCacheTtl };
 
 /** The TTL to actually send: "1h" only when requested and supported, otherwise the 5m default. */
 export function effectiveCacheTtl(requested: PromptCacheTtl | undefined, modelId: string): PromptCacheTtl {
