@@ -242,8 +242,8 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
       --vscode-panel-border: #3e3e42;
       --vscode-panel-background: #252526;
       --vscode-textLink-foreground: #569cd6;
-      --color-success: #89d185;
-      --color-error: #f48771;
+      --color-success: var(--vscode-testing-iconPassed, #89d185);
+      --color-error: var(--vscode-errorForeground, #f48771);
     }
 
     * {
@@ -298,7 +298,8 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
     }
 
     .section-header:hover {
-      background: #2d2d30;
+      background: var(--vscode-list-hoverBackground, #2a2d2e);
+      color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
     }
 
     .section-toggle {
@@ -363,7 +364,7 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
     .form-label-hint {
       display: block;
       font-size: 10px;
-      color: #969696;
+      color: var(--vscode-descriptionForeground, #969696);
       margin-top: 2px;
     }
 
@@ -421,7 +422,7 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
 
     .button-primary {
       background: var(--vscode-button-background);
-      color: white;
+      color: var(--vscode-button-foreground, white);
     }
 
     .button-primary:hover {
@@ -429,18 +430,18 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
     }
 
     .button-secondary {
-      background: var(--vscode-panel-background);
-      color: var(--vscode-foreground);
+      background: var(--vscode-button-secondaryBackground, var(--vscode-panel-background));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
       border: 1px solid var(--vscode-panel-border);
     }
 
     .button-secondary:hover {
-      background: #2d2d30;
+      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground, #2d2d30));
     }
 
     .status-line {
       font-size: 10px;
-      color: #969696;
+      color: var(--vscode-descriptionForeground, #969696);
       margin-bottom: 6px;
       padding: 4px;
       background: var(--vscode-panel-background);
