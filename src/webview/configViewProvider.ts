@@ -192,6 +192,9 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
 			sendTools: config.get<boolean>("sendTools", true),
 			emitPlaceholders: config.get<boolean>("emitPlaceholders", true),
 			enablePromptCaching: config.get<boolean>("enablePromptCaching", true),
+			promptCacheTtl: config.get<string>("promptCacheTtl", "5m"),
+			enableExtendedThinking: config.get<boolean>("enableExtendedThinking", false),
+			thinkingBudgetTokens: config.get<number>("thinkingBudgetTokens", 4096),
 			assumeLongContextClaudeModels: config.get<boolean>("assumeLongContextClaudeModels", true),
 
 			// Model metadata settings
@@ -239,8 +242,8 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
       --vscode-panel-border: #3e3e42;
       --vscode-panel-background: #252526;
       --vscode-textLink-foreground: #569cd6;
-      --color-success: #89d185;
-      --color-error: #f48771;
+      --color-success: var(--vscode-testing-iconPassed, #89d185);
+      --color-error: var(--vscode-errorForeground, #f48771);
     }
 
     * {
@@ -295,7 +298,8 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
     }
 
     .section-header:hover {
-      background: #2d2d30;
+      background: var(--vscode-list-hoverBackground, #2a2d2e);
+      color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
     }
 
     .section-toggle {
@@ -360,7 +364,7 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
     .form-label-hint {
       display: block;
       font-size: 10px;
-      color: #969696;
+      color: var(--vscode-descriptionForeground, #969696);
       margin-top: 2px;
     }
 
@@ -418,7 +422,7 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
 
     .button-primary {
       background: var(--vscode-button-background);
-      color: white;
+      color: var(--vscode-button-foreground, white);
     }
 
     .button-primary:hover {
@@ -426,18 +430,18 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
     }
 
     .button-secondary {
-      background: var(--vscode-panel-background);
-      color: var(--vscode-foreground);
+      background: var(--vscode-button-secondaryBackground, var(--vscode-panel-background));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
       border: 1px solid var(--vscode-panel-border);
     }
 
     .button-secondary:hover {
-      background: #2d2d30;
+      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground, #2d2d30));
     }
 
     .status-line {
       font-size: 10px;
-      color: #969696;
+      color: var(--vscode-descriptionForeground, #969696);
       margin-bottom: 6px;
       padding: 4px;
       background: var(--vscode-panel-background);
@@ -605,7 +609,7 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
         <label class="form-label">Emit Placeholders</label>
         <div class="checkbox-group">
           <input type="checkbox" id="emitPlaceholders" data-key="aws-bedrock.emitPlaceholders" checked>
-          <label for="emitPlaceholders">Show "Thinking…" while waiting</label>
+          <label for="emitPlaceholders">Show a waiting placeholder</label>
         </div>
       </div>
 
@@ -616,6 +620,29 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
           <label for="enablePromptCaching">Cache tools and conversation history</label>
         </div>
         <span class="form-label-hint">Reduces cost and latency on native Converse</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Cache Lifetime</label>
+        <select class="form-control" id="promptCacheTtl" data-key="aws-bedrock.promptCacheTtl">
+          <option value="5m" selected>5 minutes (default)</option>
+          <option value="1h">1 hour (extended)</option>
+        </select>
+        <span class="form-label-hint">1 hour suits long sessions with pauses; cache writes cost more. Claude 4.5+ only, other models use 5 minutes</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Extended Thinking</label>
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableExtendedThinking" data-key="aws-bedrock.enableExtendedThinking">
+          <label for="enableExtendedThinking">Let Claude think before answering</label>
+        </div>
+        <span class="form-label-hint">Native Claude 3.7+ only. Adds latency and output tokens; the thinking text isn't shown in chat</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Thinking Budget (tokens)</label>
+        <input type="number" class="form-control" id="thinkingBudgetTokens" data-key="aws-bedrock.thinkingBudgetTokens" min="1024" step="1024" value="4096">
       </div>
 
       <div class="form-group">
@@ -722,6 +749,9 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
         document.getElementById('sendTools').checked = state.sendTools;
         document.getElementById('emitPlaceholders').checked = state.emitPlaceholders;
         document.getElementById('enablePromptCaching').checked = state.enablePromptCaching;
+        document.getElementById('promptCacheTtl').value = state.promptCacheTtl;
+        document.getElementById('enableExtendedThinking').checked = state.enableExtendedThinking;
+        document.getElementById('thinkingBudgetTokens').value = state.thinkingBudgetTokens;
         document.getElementById('assumeLongContextClaudeModels').checked = state.assumeLongContextClaudeModels;
 
         document.getElementById('modelMetadataSource').value = state.modelMetadataSource;

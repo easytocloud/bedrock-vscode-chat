@@ -20,11 +20,17 @@ import {
 } from "./promptCache";
 import {
 	attachReasoning,
+	buildThinkingFields,
+	demandsAdaptiveThinking,
 	looksLikeThinkingRejection,
 	planThinking,
 	supportsExtendedThinking,
 	type ReasoningCache,
+	type ThinkingMode,
 } from "./thinking";
+
+/** Models that told us they need adaptive thinking; remembered so later requests skip the failed attempt. */
+const learnedThinkingMode = new Map<string, ThinkingMode>();
 import { createRequestTimeoutGuard, disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits, isHiddenWhenNotShowAll } from "./utils";
 
 function getCredentials(profile: string | undefined) {
@@ -636,7 +642,9 @@ async function converseOnceAttempt(options: {
 			: undefined;
 	let messagesToSend = converted.messages;
 	if (thinkingPlan && options.thinking) {
-		const attached = attachReasoning(converted.messages, options.thinking.cache);
+		const attached = attachReasoning(converted.messages, options.thinking.cache, {
+			strict: (learnedThinkingMode.get(options.modelId) ?? "enabled") === "enabled",
+		});
 		if (attached.complete) {
 			messagesToSend = attached.messages;
 		} else {
@@ -647,7 +655,12 @@ async function converseOnceAttempt(options: {
 		}
 	}
 
-	const sendOnce = async (modelId: string, thinking: typeof thinkingPlan, messages: Message[]) => {
+	const sendOnce = async (
+		modelId: string,
+		thinking: typeof thinkingPlan,
+		messages: Message[],
+		mode: ThinkingMode = "enabled"
+	) => {
 		const guard = createRequestTimeoutGuard(options.requestTimeoutMs ?? 0);
 		try {
 			return await runtime.send(
@@ -661,7 +674,7 @@ async function converseOnceAttempt(options: {
 						? { maxTokens: thinking.maxTokens }
 						: { temperature: options.temperature, maxTokens: options.maxTokens },
 					additionalModelRequestFields: thinking
-						? { thinking: { type: "enabled", budget_tokens: thinking.budgetTokens } }
+						? (buildThinkingFields(mode, thinking.budgetTokens) as any)
 						: undefined,
 				}),
 				{ abortSignal: guard.controller.signal }
@@ -672,8 +685,20 @@ async function converseOnceAttempt(options: {
 	};
 
 	const sendConverse = async (modelId: string) => {
+		let mode = learnedThinkingMode.get(options.modelId) ?? "enabled";
 		try {
-			return await sendOnce(modelId, thinkingPlan, messagesToSend);
+			try {
+				return await sendOnce(modelId, thinkingPlan, messagesToSend, mode);
+			} catch (err) {
+				if (!thinkingPlan || mode !== "enabled" || !demandsAdaptiveThinking(err)) {
+					throw err;
+				}
+				// Newer models take adaptive thinking instead of a fixed budget; learn that once per model.
+				options.log?.(`converseOnce: ${options.modelId} requires adaptive thinking; retrying in adaptive mode`);
+				learnedThinkingMode.set(options.modelId, "adaptive");
+				mode = "adaptive";
+				return await sendOnce(modelId, thinkingPlan, messagesToSend, mode);
+			}
 		} catch (err) {
 			if (!thinkingPlan || !looksLikeThinkingRejection(err)) {
 				throw err;

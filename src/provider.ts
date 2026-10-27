@@ -423,7 +423,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 					modelId: parsed?.modelId ?? model.id,
 					requiresInferenceProfile: parsed?.requiresInferenceProfile,
 					enablePromptCaching: this.shouldEnablePromptCaching(),
-				promptCacheTtl: this.promptCacheTtl(),
+					promptCacheTtl: this.promptCacheTtl(),
 					thinking: this.thinkingOptions(),
 					messages,
 					tools: undefined,

@@ -206,7 +206,7 @@ Settings are grouped into sections in VS Code's Settings UI (search `aws-bedrock
 | `aws-bedrock.promptCacheTtl` | `5m` \| `1h` | `5m` | How long Amazon Bedrock keeps cached prompt prefixes. `1h` (extended caching) suits long sessions with pauses over 5 minutes; cache writes cost more. Claude 4.5+ only, other models use 5m |
 | `aws-bedrock.enableExtendedThinking` | boolean | `false` | Let Claude 3.7+ think before answering on native requests. Adds latency and output tokens; the thinking text isn't shown in chat. Temperature is ignored while on |
 | `aws-bedrock.thinkingBudgetTokens` | number | `4096` | Max tokens Claude may spend thinking (minimum 1024) |
-| `aws-bedrock.assumeLongContextClaudeModels` | boolean | `true` | Report a 1M-token context window for Claude models known to support it (Sonnet 4, Sonnet 4.6, Sonnet 5, Opus 4.6+) |
+| `aws-bedrock.assumeLongContextClaudeModels` | boolean | `true` | Report a 1M-token context window for Claude models known to support it (Claude 4.6 and newer, including all 5.x) |
 | `aws-bedrock.modelMetadataSource` | string | `none` | Metadata source for token/capability info: `none` (built-in heuristics only, no network calls) or `litellm` |
 | `aws-bedrock.modelMetadataUrl` | string | default URL | External metadata registry URL (used when source is `litellm`) |
 | `aws-bedrock.modelMetadataCacheHours` | number | `24` | Cache duration for external metadata (used when source is `litellm`) |

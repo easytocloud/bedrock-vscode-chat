@@ -7,14 +7,9 @@ const MIN_ANSWER_TOKENS = 1024;
 const DEFAULT_ANSWER_TOKENS = 8192;
 const MAX_CACHED_REASONING = 200;
 
-/**
- * Claude models that accept `thinking: { type: "enabled", budget_tokens }`: 3.7 and every 4.x/5.x
- * family. A maintained pattern list (like LONG_CONTEXT_CLAUDE_MODELS) since it can't be derived
- * from the model name alone; a model that rejects the field anyway is retried without it.
- */
-export function supportsExtendedThinking(modelId: string): boolean {
-	return /claude-3[-.]7|claude-(opus|sonnet|haiku)-[4-9]|claude-(fable|mythos)-\d/i.test(modelId);
-}
+// Which models accept `thinking: { type: "enabled", budget_tokens }` is rule-based (3.7+); a model that
+// rejects the field anyway is retried without it.
+export { supportsExtendedThinking } from "./claudeModels";
 
 /**
  * Pick a thinking budget and max output size that satisfy the API's rules
@@ -33,6 +28,32 @@ export function planThinking(
 		return undefined;
 	}
 	return { budgetTokens: Math.min(budget, maxTokens - MIN_ANSWER_TOKENS), maxTokens };
+}
+
+export type ThinkingMode = "enabled" | "adaptive";
+
+/** Maps the user's token budget onto the effort level adaptive-thinking models take instead. */
+export function effortForBudget(budgetTokens: number): "low" | "medium" | "high" {
+	if (budgetTokens <= 2048) {
+		return "low";
+	}
+	return budgetTokens <= 8192 ? "medium" : "high";
+}
+
+/** The `additionalModelRequestFields` for a thinking request in the given mode. */
+export function buildThinkingFields(mode: ThinkingMode, budgetTokens: number): Record<string, unknown> {
+	return mode === "adaptive"
+		? { thinking: { type: "adaptive" }, output_config: { effort: effortForBudget(budgetTokens) } }
+		: { thinking: { type: "enabled", budget_tokens: budgetTokens } };
+}
+
+/**
+ * Newer Claude models reject a fixed budget ("thinking.type.enabled is not supported ... use
+ * thinking.type.adaptive"). Detect that so the request can be retried in adaptive mode.
+ */
+export function demandsAdaptiveThinking(err: unknown): boolean {
+	const message = err instanceof Error ? err.message : String(err);
+	return /adaptive/i.test(message) && /thinking/i.test(message);
 }
 
 /** True when Bedrock rejected the request because of the thinking configuration. */
@@ -79,12 +100,16 @@ function toolUseIds(msg: Message): string[] {
  * `complete` is false when an assistant message in the *current* tool loop (everything after the
  * last real user turn) has tool calls but no cached thinking, e.g. after an extension reload;
  * the caller should then send the request without thinking rather than get a validation error.
- * Earlier, finished turns don't need their thinking back.
+ * Earlier, finished turns don't need their thinking back. With `strict: false` (adaptive mode)
+ * a missing block never makes the result incomplete.
  */
 export function attachReasoning(
 	messages: readonly Message[],
-	cache: ReasoningCache
+	cache: ReasoningCache,
+	options: { strict?: boolean } = {}
 ): { messages: Message[]; complete: boolean } {
+	// Adaptive mode may legitimately produce no thinking block for a turn, so a missing one isn't an error.
+	const strict = options.strict ?? true;
 	let loopStart = 0;
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const m = messages[i];
@@ -105,7 +130,7 @@ export function attachReasoning(
 		}
 		const cachedId = ids.find((id) => cache.get(id));
 		if (!cachedId) {
-			if (i >= loopStart) {
+			if (strict && i >= loopStart) {
 				complete = false;
 			}
 			return msg;

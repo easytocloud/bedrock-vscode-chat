@@ -1,0 +1,49 @@
+name: Model drift check
+
+# The built-in Claude model rules (context/output limits, thinking, 1h cache, Mantle support) are
+# compared weekly with the public litellm registry. On drift, an issue is opened so the rules get
+# updated before users notice.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run drift check
+        id: drift
+        continue-on-error: true
+        run: npm run test:drift 2>&1 | tee drift.log
+      - name: Open an issue on drift
+        if: steps.drift.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Model rules drifted from the litellm registry"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          body="The weekly model drift check failed. Update src/claudeModels.ts (and the tests) to match the registry.
+
+          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          \`\`\`
+          $(grep -E 'anthropic\.claude|registry' drift.log | sort -u | head -40)
+          \`\`\`"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
+          exit 1
