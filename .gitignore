@@ -4,3 +4,4 @@ out
 .vscode-test
 .DS_Store
 mockups/webview-content.gen.html
+.envrc

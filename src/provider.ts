@@ -13,7 +13,7 @@ import * as vscode from "vscode";
 import type { ParsedModelInfo } from "./types";
 import { converseOnce, listNativeBedrockModels } from "./bedrockNative";
 import { loadExternalMetadataForModels, type ExternalModelMetadata } from "./externalModelMetadata";
-import { isMantleServedModelId, shouldLog, validateRequest, type LogLevel } from "./utils";
+import { isMantleServedModelId, shouldLog, type LogLevel } from "./utils";
 
 export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 	private readonly _onDidChangeLanguageModelChatInformation = new vscode.EventEmitter<void>();
@@ -342,11 +342,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		const maxTokens = options.modelOptions?.max_tokens as number | undefined;
 		const toolsToSend = this.shouldSendTools() ? options.tools : undefined;
 
-		const validation = validateRequest(messages);
-		if (!validation.valid) {
-			this.log("error", `native bedrock request invalid: ${validation.error ?? "unknown error"}`);
-			throw new Error(`Invalid request: ${validation.error}`);
-		}
+		// Tool-call/result pairing is repaired in bedrockNative (repairToolHistory) rather than rejected here.
 
 		this.logDebug(
 			`native bedrock request: model=${model.id} modelId=${parsed?.modelId ?? model.id} ` +

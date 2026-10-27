@@ -10,6 +10,7 @@ import {
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
 import type { ParsedModelInfo } from "./types";
+import { repairToolHistory } from "./toolHistory";
 import { createRequestTimeoutGuard, disambiguateDisplayNames, inferModelCapabilities, inferTokenLimits, isHiddenWhenNotShowAll } from "./utils";
 
 function getCredentials(profile: string | undefined) {
@@ -487,6 +488,10 @@ function convertVscodeMessagesToBedrock(
 
 		outMessages.push({ role, content: blocks });
 	}
+
+	// VS Code can send histories whose tool calls/results don't pair up the way Converse
+	// demands (cancelled tools, summarized context); repair before adding the cache point.
+	outMessages.splice(0, outMessages.length, ...repairToolHistory(outMessages));
 
 	// Mark a cache checkpoint at the end of the second-to-last message, i.e. everything
 	// except the newest turn. That prefix is identical to what was sent last turn, so on
