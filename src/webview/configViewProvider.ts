@@ -609,7 +609,7 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
         <label class="form-label">Emit Placeholders</label>
         <div class="checkbox-group">
           <input type="checkbox" id="emitPlaceholders" data-key="aws-bedrock.emitPlaceholders" checked>
-          <label for="emitPlaceholders">Show "Thinking…" while waiting</label>
+          <label for="emitPlaceholders">Show a waiting placeholder</label>
         </div>
       </div>
 
