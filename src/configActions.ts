@@ -48,10 +48,14 @@ export async function testNativeConnection(
 	nativeProvider: NativeBedrockProvider,
 	cancellationToken: vscode.CancellationToken
 ): Promise<number> {
+	// silent: the caller reports the outcome once, instead of the provider also toasting.
 	const result = await nativeProvider.provideLanguageModelChatInformation(
-		{ silent: false },
+		{ silent: true },
 		cancellationToken
 	);
+	if (nativeProvider.lastDiscoveryError) {
+		throw new Error(nativeProvider.lastDiscoveryError);
+	}
 	return result.length;
 }
 
@@ -59,10 +63,14 @@ export async function testMantleConnection(
 	mantleProvider: MantleProvider,
 	cancellationToken: vscode.CancellationToken
 ): Promise<number> {
+	// silent: the caller reports the outcome once, instead of the provider also toasting.
 	const result = await mantleProvider.provideLanguageModelChatInformation(
-		{ silent: false },
+		{ silent: true },
 		cancellationToken
 	);
+	if (mantleProvider.lastDiscoveryError) {
+		throw new Error(mantleProvider.lastDiscoveryError);
+	}
 	return result.length;
 }
 

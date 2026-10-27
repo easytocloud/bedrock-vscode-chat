@@ -125,6 +125,10 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
 						vscode.window.showInformationMessage(
 							`Connection OK — ${count} model(s) available`
 						);
+					} else {
+						vscode.window.showWarningMessage(
+							`Connected, but no models were returned. Check that the provider is enabled, the region offers models, and "Show all models" is on — see the logs for details.`
+						);
 					}
 				} catch (error) {
 					const message =

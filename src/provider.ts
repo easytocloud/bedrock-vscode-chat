@@ -20,6 +20,8 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 	readonly onDidChangeLanguageModelChatInformation = this._onDidChangeLanguageModelChatInformation.event;
 
 	private _models: ParsedModelInfo[] | null = null;
+	/** Reason the most recent model discovery failed, if it did (read by the Test Connection button). */
+	lastDiscoveryError: string | undefined;
 	private _nativeToolSupport = new Map<string, boolean>();
 	private _externalMetaByModelId: Map<string, ExternalModelMetadata> | null = null;
 	private _externalMetaLoadedAt = 0;
@@ -181,6 +183,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 	): Promise<vscode.LanguageModelChatInformation[]> {
 		this.logDebug(`native provideLanguageModelChatInformation called, silent: ${options.silent}`);
 
+		this.lastDiscoveryError = undefined;
 		if (!this.isNativeEnabled()) {
 			this._models = [];
 			return [];
@@ -214,6 +217,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
+			this.lastDiscoveryError = `${message} (AWS credentials with bedrock:ListFoundationModels are required)`;
 			this.log(
 				"error",
 				`native model discovery failed (region=${region} profile=${this.awsProfile() ?? "default"}): ${message}`

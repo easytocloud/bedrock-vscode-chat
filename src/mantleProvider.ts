@@ -46,6 +46,8 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 	readonly onDidChangeLanguageModelChatInformation = this._onDidChangeLanguageModelChatInformation.event;
 
 	private _models: ParsedModelInfo[] | null = null;
+	/** Reason the most recent model discovery failed, if it did (read by the Test Connection button). */
+	lastDiscoveryError: string | undefined;
 	private _mantleToolSupport = new Map<string, boolean>();
 	private _toolCallBuffers = new Map<number, BufferedToolCall>();
 	private _completedToolCallIndices = new Set<number>();
@@ -245,6 +247,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 	): Promise<vscode.LanguageModelChatInformation[]> {
 		this.logDebug(`Mantle provideLanguageModelChatInformation called, silent: ${options.silent}`);
 
+		this.lastDiscoveryError = undefined;
 		if (!this.isMantleEnabled()) {
 			this._models = [];
 			return [];
@@ -274,6 +277,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 				const apiKey = await this.ensureApiKey(true);
 				if (!apiKey) {
 					this.logDebug("Mantle enabled but no API key available");
+					this.lastDiscoveryError = "No Amazon Bedrock API key is stored. Use Set API Key first.";
 				} else {
 					headers = {
 						Authorization: `Bearer ${apiKey}`,
@@ -290,6 +294,10 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 
 				if (!response.ok) {
 					const authDesc = authMethod === "awsCredentials" ? "AWS credentials" : "API key";
+					this.lastDiscoveryError =
+						response.status === 401
+							? `Invalid ${authDesc} (HTTP 401)`
+							: `HTTP ${response.status} ${response.statusText}`;
 					if (response.status === 401) {
 						if (!options.silent) {
 							vscode.window.showErrorMessage(`Invalid ${authDesc} for Mantle. Please check your configuration.`);
@@ -330,6 +338,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		} catch (error) {
 			const authDesc = authMethod === "awsCredentials" ? "AWS credentials" : "API key";
 			const message = error instanceof Error ? error.message : String(error);
+			this.lastDiscoveryError = message;
 			this.log("error", `Failed to fetch Mantle models using ${authDesc}: ${message}`);
 			if (!options.silent) {
 				vscode.window.showErrorMessage(`Failed to fetch Mantle models: ${message}`);
