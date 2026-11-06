@@ -5,6 +5,13 @@ All notable changes to the GitHub Copilot Chat Model Provider for Amazon Bedrock
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-11-06 (local proxy patch)
+
+### Fixed
+- Native Converse requests now use HTTP/1.1 through configured HTTP/HTTPS CONNECT proxies, respecting `HTTPS_PROXY`, `ALL_PROXY`, and `NO_PROXY` (including lowercase variants). Direct requests retain HTTP/2; Mantle paths are unchanged.
+- Proxy transport diagnostics report only whether a proxy is used, never its URL or credentials. Per-call runtime clients and their connections are released after success or failure.
+- Test source and compiled test bundles are excluded from the VSIX.
+
 ## [0.7.0] - 2026-10-27
 
 ### Added

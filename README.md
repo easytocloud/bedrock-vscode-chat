@@ -334,6 +334,24 @@ Models with enhanced reasoning:
 - Verify firewall/proxy settings allow access to `*.api.aws`
 - Ensure the selected region is accessible from your location
 
+### Native Chat Behind a Proxy (Local Patch 0.7.1)
+
+If native models appear but Chat fails with `getaddrinfo ENOTFOUND bedrock-runtime.<region>.amazonaws.com`, set `HTTPS_PROXY` (or `https_proxy`) in the **extension host environment**. With Remote-SSH, set it on the remote host and restart the extension host.
+
+- Native Converse requests use HTTP/1.1 through an HTTP/HTTPS CONNECT proxy when a proxy applies. Without a proxy, or for `NO_PROXY` matches, they keep HTTP/2.
+- `ALL_PROXY`/`all_proxy` is a fallback; `HTTP_PROXY`/`http_proxy` applies to HTTP endpoints. Lowercase variables take precedence.
+- `NO_PROXY`/`no_proxy` accepts comma- or whitespace-separated exact hosts, `.domain`/`*.domain` suffixes, optional ports, and `*` to bypass all proxies. CIDR ranges are not supported. Excluded hosts must be directly reachable.
+- **Show Logs** reports `BedrockRuntimeClient created: proxy=on/off` for configuration and `Bedrock runtime transport: proxy=on/off` for actual requests. Proxy URLs and credentials are not logged.
+- This patch does not read VS Code's `http.proxy` setting and does not change model discovery, authentication, or the Mantle fetch paths. Mantle proxy behavior is not verified.
+
+To install the locally built patch on the Remote-SSH host:
+
+```bash
+code --install-extension bedrock-mantle-vscode-chat-0.7.1.vsix --force
+```
+
+Run **Developer: Reload Window**, confirm version **0.7.1**, then test a short native Chat message and an Agent tool call. Disable this extension's automatic updates while using the local patch; return to the official extension when the fix is available upstream. Version 0.7.1 here identifies a local patch, not an official release.
+
 ## Development
 
 ### Building from Source
