@@ -12,6 +12,8 @@ dist/**
 # Build / lint / test config and documentation not needed at runtime
 config/**
 docs/**
+test/**
+out/test/**
 *.map
 
 # Assets that aren't needed (SVG version is redundant with PNG)

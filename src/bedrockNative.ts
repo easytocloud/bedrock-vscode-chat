@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
+import { createRuntimeRequestHandler } from "./proxy";
 import type { ParsedModelInfo } from "./types";
 import { repairToolHistory } from "./toolHistory";
 import {
@@ -618,8 +619,20 @@ async function converseOnceAttempt(options: {
 		region: options.region,
 		credentials,
 		customUserAgent: buildUserAgentFragment(options.userAgent),
+		requestHandler: createRuntimeRequestHandler(options.log),
 	});
 
+	try {
+		return await converseWithRuntime(runtime, options);
+	} finally {
+		runtime.destroy();
+	}
+}
+
+async function converseWithRuntime(
+	runtime: BedrockRuntimeClient,
+	options: ConverseOnceOptions
+): ReturnType<typeof converseOnceAttempt> {
 	// Prompt caching (cachePoint) is only supported by Anthropic Claude and Amazon Nova
 	// models on Amazon Bedrock today; other families (Llama, Mistral, DeepSeek, Qwen, ...) reject
 	// the field. Gate on the model family rather than sending it unconditionally.
@@ -854,4 +867,3 @@ export async function converseOnce(options: ConverseOnceOptions): ReturnType<typ
 		return converseOnceAttempt({ ...options, promptCacheTtl: "5m" });
 	}
 }
-
