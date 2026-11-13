@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Native chat requests now work behind an HTTP(S) proxy ([#8](https://github.com/easytocloud/bedrock-vscode-chat/issues/8)). Model discovery already went through VS Code's proxy support, but the Converse call used HTTP/2, which bypasses it, and failed with `getaddrinfo ENOTFOUND`. It now uses HTTP/1.1, the same as discovery, so the `http.proxy` setting, system/PAC proxies and `HTTPS_PROXY` all apply. Thanks to HND-Hidetaka-Takano for the detailed diagnosis.
+- Each chat request's Amazon Bedrock client is now closed when the request finishes, fails or is cancelled, so idle connections no longer accumulate (from PR #9 by HND-Hidetaka-Takano).
+- The extension package no longer includes files that aren't needed at runtime: tests, the screenshot pipeline, a stale source map and a local `.envrc` file (which held only password-manager references, no credentials).
 
 ## [0.8.0] - 2026-11-13
 

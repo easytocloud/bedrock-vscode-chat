@@ -602,7 +602,7 @@ export function convertVscodeToolsToBedrockToolConfig(
 	return { tools: convertedTools };
 }
 
-async function converseOnceAttempt(options: {
+async function converseWithRuntime(runtime: BedrockRuntimeClient, options: {
 	region: string;
 	awsProfile: string | undefined;
 	userAgent: string;
@@ -636,8 +636,6 @@ async function converseOnceAttempt(options: {
 	toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }>;
 	reasoning?: string;
 }> {
-	const runtime = createBedrockRuntimeClient(options);
-
 	// Prompt caching (cachePoint) is only supported by Anthropic Claude and Amazon Nova
 	// models on Amazon Bedrock today; other families (Llama, Mistral, DeepSeek, Qwen, ...) reject
 	// the field. Gate on the model family rather than sending it unconditionally.
@@ -857,7 +855,20 @@ async function converseOnceAttempt(options: {
 
 	return { text, toolUses, reasoning: reasoning || undefined };
 }
-type ConverseOnceOptions = Parameters<typeof converseOnceAttempt>[0];
+type ConverseOnceOptions = Parameters<typeof converseWithRuntime>[1];
+
+/**
+ * One Converse attempt on a fresh runtime client, always destroyed afterwards so its
+ * keep-alive sockets are released on success, failure and abort (design from PR #9).
+ */
+async function converseOnceAttempt(options: ConverseOnceOptions): ReturnType<typeof converseWithRuntime> {
+	const runtime = createBedrockRuntimeClient(options);
+	try {
+		return await converseWithRuntime(runtime, options);
+	} finally {
+		runtime.destroy();
+	}
+}
 
 export async function converseOnce(options: ConverseOnceOptions): ReturnType<typeof converseOnceAttempt> {
 	try {
