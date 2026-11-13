@@ -198,11 +198,7 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
 			assumeLongContextClaudeModels: config.get<boolean>("assumeLongContextClaudeModels", true),
 
 			// Model metadata settings
-			modelMetadataSource: config.get<string>("modelMetadataSource", "none"),
-			modelMetadataUrl: config.get<string>(
-				"modelMetadataUrl",
-				"https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-			),
+			modelMetadataSource: config.get<string>("modelMetadataSource", "none") === "none" ? "none" : "models.dev",
 			modelMetadataCacheHours: config.get<number>("modelMetadataCacheHours", 24),
 
 			// Dropdown options
@@ -666,15 +662,9 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
         <label class="form-label">Metadata Source</label>
         <select class="form-control" id="modelMetadataSource" data-key="aws-bedrock.modelMetadataSource">
           <option value="none">none</option>
-          <option value="litellm">litellm</option>
+          <option value="models.dev">models.dev</option>
         </select>
-        <span class="form-label-hint">"none" uses built-in heuristics, "litellm" fetches a public registry</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Registry URL</label>
-        <input type="text" class="form-control" id="modelMetadataUrl" data-key="aws-bedrock.modelMetadataUrl">
-        <span class="form-label-hint">Only used when source is "litellm"</span>
+        <span class="form-label-hint">"none" uses built-in heuristics, "models.dev" fetches limits and capabilities from models.dev</span>
       </div>
 
       <div class="form-group">
@@ -755,7 +745,6 @@ export class ConfigViewProvider implements vscode.WebviewViewProvider {
         document.getElementById('assumeLongContextClaudeModels').checked = state.assumeLongContextClaudeModels;
 
         document.getElementById('modelMetadataSource').value = state.modelMetadataSource;
-        document.getElementById('modelMetadataUrl').value = state.modelMetadataUrl;
         document.getElementById('modelMetadataCacheHours').value = state.modelMetadataCacheHours;
 
         // Update profile and region dropdowns

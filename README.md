@@ -207,9 +207,8 @@ Settings are grouped into sections in VS Code's Settings UI (search `aws-bedrock
 | `aws-bedrock.enableExtendedThinking` | boolean | `false` | Let Claude 3.7+ think before answering on native requests. Adds latency and output tokens; the thinking text isn't shown in chat. Temperature is ignored while on |
 | `aws-bedrock.thinkingBudgetTokens` | number | `4096` | Max tokens Claude may spend thinking (minimum 1024) |
 | `aws-bedrock.assumeLongContextClaudeModels` | boolean | `true` | Report a 1M-token context window for Claude models known to support it (Claude 4.6 and newer, including all 5.x) |
-| `aws-bedrock.modelMetadataSource` | string | `none` | Metadata source for token/capability info: `none` (built-in heuristics only, no network calls) or `litellm` |
-| `aws-bedrock.modelMetadataUrl` | string | default URL | External metadata registry URL (used when source is `litellm`) |
-| `aws-bedrock.modelMetadataCacheHours` | number | `24` | Cache duration for external metadata (used when source is `litellm`) |
+| `aws-bedrock.modelMetadataSource` | string | `none` | Metadata source for token/capability info: `none` (built-in heuristics only, no network calls) or `models.dev` |
+| `aws-bedrock.modelMetadataCacheHours` | number | `24` | Cache duration for external metadata (used when source is `models.dev`) |
 
 ### Supported Regions
 
@@ -280,7 +279,7 @@ Models with multimodal (image) input:
 
 ### Notes on Capability Metadata
 
-- **Token limits + initial capabilities**: By default the extension uses built-in heuristics only, with no external network calls. It can optionally use an external model metadata registry (litellm's public JSON) for more accurate limits on non-Claude Mantle models — set `aws-bedrock.modelMetadataSource` to `litellm` to enable it (also configurable via `aws-bedrock.modelMetadataUrl` and `aws-bedrock.modelMetadataCacheHours`). For Claude specifically, `aws-bedrock.assumeLongContextClaudeModels` (on by default) reports the correct 1M-token window for the specific models that support it, without needing the external registry.
+- **Token limits + initial capabilities**: By default the extension uses built-in heuristics only, with no external network calls. It can optionally use [models.dev](https://models.dev), an open database of model limits and capabilities, for more accurate context/output limits and tool/vision support on non-Claude models — set `aws-bedrock.modelMetadataSource` to `models.dev` to enable it (refetched every `aws-bedrock.modelMetadataCacheHours`; a failed fetch falls back to the cached copy). For Claude specifically, `aws-bedrock.assumeLongContextClaudeModels` (on by default) reports the correct 1M-token window for the specific models that support it, without needing external metadata.
 - **Native Amazon Bedrock models**: vision is derived from `ListFoundationModels` input modalities (reliable). Tool support is verified on-demand by attempting a tool-enabled request and caching whether the model accepts tool config (this overrides external metadata if runtime behavior differs).
 - **Mantle models**: `/v1/models` does not include full tool/vision/token metadata, so the extension uses external metadata when enabled, plus runtime probing (tools) as a safety net. Claude models on Mantle are routed to the Anthropic Messages API automatically; models with zero Mantle support (neither Chat Completions nor Messages) are excluded from the Mantle picker entirely.
 - **Duplicate names**: if two models in the same provider's list would otherwise show an identical label, the extension appends the raw technical model ID to keep every entry uniquely selectable.

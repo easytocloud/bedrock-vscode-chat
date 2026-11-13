@@ -13,6 +13,7 @@ import * as vscode from "vscode";
 import type { ParsedModelInfo } from "./types";
 import { converseOnce, listNativeBedrockModels } from "./bedrockNative";
 import { ReasoningCache } from "./thinking";
+import { isMissingCredentialsError } from "./awsAuth";
 import { loadExternalMetadataForModels, type ExternalModelMetadata } from "./externalModelMetadata";
 import { isMantleServedModelId, shouldLog, type LogLevel } from "./utils";
 
@@ -24,6 +25,8 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 	private readonly reasoningCache = new ReasoningCache();
 	/** Reason the most recent model discovery failed, if it did (read by the Test Connection button). */
 	lastDiscoveryError: string | undefined;
+	/** True when the most recent discovery failed only because AWS credentials aren't available yet (not signed in). */
+	discoveryNeedsSignIn = false;
 	private _nativeToolSupport = new Map<string, boolean>();
 	private _externalMetaByModelId: Map<string, ExternalModelMetadata> | null = null;
 	private _externalMetaLoadedAt = 0;
@@ -39,12 +42,6 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		return this.config.get<string>("modelMetadataSource", "none");
 	}
 
-	private externalMetadataUrl(): string {
-		return this.config.get<string>(
-			"modelMetadataUrl",
-			"https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-		);
-	}
 
 	private externalMetadataCacheHours(): number {
 		return this.config.get<number>("modelMetadataCacheHours", 24);
@@ -70,8 +67,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 
 		this._externalMetaByModelId = await loadExternalMetadataForModels({
 			memento: this.globalState,
-			cacheKey: "aws-bedrock.externalModelMetadata.v1",
-			url: this.externalMetadataUrl(),
+			cacheKey: "aws-bedrock.externalModelMetadata.modelsDev.v1",
 			cacheHours: this.externalMetadataCacheHours(),
 			region,
 			userAgent: this.userAgent,
@@ -88,18 +84,18 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		}
 
 		// Token limits
-		if (typeof meta.max_output_tokens === "number" && meta.max_output_tokens > 0) {
-			model.maxOutputTokens = meta.max_output_tokens;
+		if (meta.maxOutputTokens) {
+			model.maxOutputTokens = meta.maxOutputTokens;
 		}
-		if (typeof meta.max_input_tokens === "number" && meta.max_input_tokens > 0) {
-			model.maxInputTokens = meta.max_input_tokens;
-			// Keep contextLength coherent for any fallback logic.
-			model.contextLength = Math.max(model.contextLength, meta.max_input_tokens + (model.maxOutputTokens || 0));
+		if (meta.contextLength) {
+			model.contextLength = meta.contextLength;
+		}
+		if (meta.maxInputTokens) {
+			model.maxInputTokens = meta.maxInputTokens;
 		}
 
 		// Tool calling support (use as an initial signal; runtime probing will override)
-		const tools = meta.supports_function_calling === true || meta.supports_tool_choice === true;
-		if (tools) {
+		if (meta.toolCalling === true) {
 			model.capabilities.supportsToolCalling = true;
 		}
 		// Vision support comes from Amazon Bedrock's own ListFoundationModels input modalities
@@ -201,6 +197,7 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		this.logDebug(`native provideLanguageModelChatInformation called, silent: ${options.silent}`);
 
 		this.lastDiscoveryError = undefined;
+		this.discoveryNeedsSignIn = false;
 		if (!this.isNativeEnabled()) {
 			this._models = [];
 			return [];
@@ -235,6 +232,16 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.lastDiscoveryError = `${message} (AWS credentials with bedrock:ListFoundationModels are required)`;
+			if (isMissingCredentialsError(error)) {
+				// Expected when VS Code starts before the user has signed in (e.g. `aws sso login`):
+				// no toast, no error-level log. Refresh after signing in to load the models.
+				this.discoveryNeedsSignIn = true;
+				this.logAlways(
+					`native model discovery skipped: AWS credentials not available yet (profile=${this.awsProfile() ?? "default"}). Sign in, then refresh models. (${message})`
+				);
+				this._models = [];
+				return [];
+			}
 			this.log(
 				"error",
 				`native model discovery failed (region=${region} profile=${this.awsProfile() ?? "default"}): ${message}`

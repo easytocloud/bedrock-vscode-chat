@@ -339,28 +339,21 @@
             "order": 1,
             "enum": [
               "none",
-              "litellm"
+              "models.dev"
             ],
             "enumDescriptions": [
               "Use only built-in heuristics and runtime probing. No external network calls.",
-              "Additionally fetch a public model registry (litellm) for more accurate limits — mainly useful for non-Claude Mantle models."
+              "Additionally fetch the open models.dev database for more accurate context/output limits and tool/vision capabilities — mainly useful for non-Claude models."
             ],
             "default": "none",
             "description": "Where to source model capability and token-limit metadata beyond what Amazon Bedrock's own APIs and this extension's built-in heuristics provide."
-          },
-          "aws-bedrock.modelMetadataUrl": {
-            "type": "string",
-            "order": 2,
-            "default": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
-            "description": "Registry URL to fetch from. Only used when the source above is set to 'litellm'.",
-            "editPresentation": "singlelineText"
           },
           "aws-bedrock.modelMetadataCacheHours": {
             "type": "number",
             "order": 3,
             "default": 24,
             "minimum": 0,
-            "description": "How long to cache fetched metadata, in hours, before refetching. 0 disables caching and refetches every time. Only used when the source above is set to 'litellm'."
+            "description": "How long to cache fetched metadata, in hours, before refetching. 0 disables caching and refetches every time. Only used when the source above is set to 'models.dev'."
           }
         }
       }
@@ -384,6 +377,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1085.0",
     "@aws-sdk/credential-provider-ini": "^3.973.1",
     "@aws-sdk/credential-provider-node": "^3.972.66",
+    "@opencode-ai/models": "0.0.120",
     "@smithy/core": "^3.29.3",
     "@smithy/signature-v4": "^5.6.4",
     "@smithy/types": "^4.16.1"

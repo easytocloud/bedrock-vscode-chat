@@ -41,6 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Get configuration (both providers currently share the "aws-bedrock" settings
 	// namespace; provider-specific keys are prefixed, e.g. mantleAuthMethod/mantleRegion).
 	const config = vscode.workspace.getConfiguration("aws-bedrock");
+	migrateLegacyMetadataSource(config, output);
 
 	// Create and register the native Amazon Bedrock (Converse) provider. Keeps the extension's
 	// original vendor ID so existing users' native model selections keep working.
@@ -117,7 +118,10 @@ export function activate(context: vscode.ExtensionContext) {
 	Promise.allSettled([nativeModelsPromise, mantleModelsPromise]).then(([nResult, mResult]) => {
 		const nativeCount = nResult.status === "fulfilled" ? nResult.value.length : 0;
 		const mantleCount = mResult.status === "fulfilled" ? mResult.value.length : 0;
-		if (nativeCount === 0 && mantleCount === 0) {
+		// Stay quiet when a provider only failed because the user hasn't signed in yet
+		// (e.g. VS Code started before `aws sso login`) — that's expected, not a misconfiguration.
+		const waitingForSignIn = nativeProvider.discoveryNeedsSignIn || mantleProvider.discoveryNeedsSignIn;
+		if (nativeCount === 0 && mantleCount === 0 && !waitingForSignIn) {
 			vscode.window
 				.showWarningMessage(
 					"Amazon Bedrock (Copilot Chat): no chat models are available. Check that at least one provider is enabled and configured correctly.",
@@ -172,4 +176,26 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
 	// Cleanup if needed
+}
+
+/**
+ * "litellm" was the previous external metadata source; it has been replaced by models.dev.
+ * Rewrite the stored value wherever it was set so the setting stays valid (any non-"none"
+ * value already behaves as models.dev at runtime, so this is cosmetic and best-effort).
+ */
+function migrateLegacyMetadataSource(config: vscode.WorkspaceConfiguration, output: vscode.OutputChannel): void {
+	const inspected = config.inspect<string>("modelMetadataSource");
+	const targets: Array<[string | undefined, vscode.ConfigurationTarget]> = [
+		[inspected?.globalValue, vscode.ConfigurationTarget.Global],
+		[inspected?.workspaceValue, vscode.ConfigurationTarget.Workspace],
+		[inspected?.workspaceFolderValue, vscode.ConfigurationTarget.WorkspaceFolder],
+	];
+	for (const [value, target] of targets) {
+		if (value === "litellm") {
+			config.update("modelMetadataSource", "models.dev", target).then(
+				() => output.appendLine('Migrated aws-bedrock.modelMetadataSource from "litellm" to "models.dev"'),
+				() => undefined
+			);
+		}
+	}
 }
