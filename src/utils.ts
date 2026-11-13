@@ -320,7 +320,7 @@ export function inferTokenLimits(
 		// claude-opus-4-5, claude-haiku-4-5). Rather than falling back to a conservative
 		// non-Claude default (which silently truncated every current-generation model to
 		// 100K/4096), assume the modern generous limits these models actually ship with.
-		// This will still be overridden by external metadata (litellm) when enabled.
+		// This will still be overridden by external metadata (models.dev) when enabled.
 		return { contextLength: 200000, maxOutputTokens: standardMaxOutput(lowerModelId) };
 	}
 

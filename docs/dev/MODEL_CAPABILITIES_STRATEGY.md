@@ -26,15 +26,14 @@ const supportsVision = (m.inputModalities ?? []).some(
 
 **Reliability**: ✅ **100%** - This is the official AWS API data
 
-### 2. External Metadata (LiteLLM Registry)
-**Source**: https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json
+### 2. External Metadata (models.dev)
+**Source**: https://models.dev/api.json, fetched with the `@opencode-ai/models` client (`src/externalModelMetadata.ts`), provider `amazon-bedrock`
 
-Provides:
-- `max_input_tokens`
-- `max_output_tokens`
-- `supports_function_calling`
-- `supports_tool_choice`
-- `supports_vision`
+Keyed by native Amazon Bedrock model ID, including cross-region inference-profile prefixes (`us.`, `eu.`, `global.`, ...). Provides:
+- `limit.context` / `limit.input` / `limit.output`
+- `tool_call`
+- `modalities.input` (vision = includes `image`)
+- `reasoning`
 
 **Reliability**: ⚠️ **~80-90%** - Community maintained, may lag behind AWS releases
 
@@ -74,7 +73,7 @@ function inferModelCapabilities(modelId: string): ModelCapabilities {
 ## Recommended Implementation Order
 
 1. **AWS API** for vision (already correct ✅)
-2. **LiteLLM metadata** for token limits & initial tool support hint
+2. **models.dev metadata** for token limits & initial tool support hint
 3. **Runtime probing** to verify tool support on first use
 4. **Heuristics** as final fallback if all else fails
 
@@ -86,7 +85,7 @@ The Amazon Bedrock team intentionally does **NOT** expose:
 - Detailed capability matrices
 
 The extension must rely on:
-- External community registries (LiteLLM)
+- External community registries (models.dev)
 - Runtime behavior observation
 - Conservative defaults
 
@@ -94,7 +93,7 @@ The extension must rely on:
 
 ### SHORT TERM (Keep Current Approach)
 - ✅ Use AWS API for vision (`inputModalities`)
-- ✅ Use LiteLLM for token limits
+- ✅ Use models.dev for token limits
 - ✅ Use runtime probing for tool support
 - ✅ Maintain conservative defaults
 
@@ -113,7 +112,7 @@ The extension must rely on:
 
 There is no "reliable programmatic way" to get all capabilities from AWS alone. The combination of:
 1. AWS APIs (vision)
-2. LiteLLM metadata (tokens, tool hints)
+2. models.dev metadata (tokens, tool hints)
 3. Runtime probing (verification)
 
 ...is the **best possible solution** given Amazon Bedrock's current API limitations.

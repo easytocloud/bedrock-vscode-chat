@@ -60,3 +60,38 @@ export async function signMantleRequest(
 		headers: signed.headers as Record<string, string>,
 	};
 }
+
+/**
+ * True when an error means AWS credentials simply aren't available (yet): no credentials
+ * found, SSO session not logged in or expired, expired temporary credentials. These are
+ * expected at startup when VS Code activates the extension before the user has signed in,
+ * so callers report them quietly instead of as errors. Authorization failures (e.g.
+ * AccessDeniedException) are deliberately not matched — those are real configuration problems.
+ */
+export function isMissingCredentialsError(error: unknown): boolean {
+	if (!error || typeof error !== "object") {
+		return false;
+	}
+	const name = String((error as { name?: unknown }).name ?? "");
+	const code = String((error as { Code?: unknown; code?: unknown }).Code ?? (error as { code?: unknown }).code ?? "");
+	if (
+		[
+			"CredentialsProviderError",
+			"TokenProviderError",
+			"ExpiredTokenException",
+			"ExpiredToken",
+		].some((n) => n === name || n === code)
+	) {
+		return true;
+	}
+	const message = String((error as { message?: unknown }).message ?? "").toLowerCase();
+	return [
+		"could not load credentials",
+		"unable to load sso token",
+		"sso session",
+		"token is expired",
+		"the security token included in the request is expired",
+		"run 'aws sso login'",
+		"run aws sso login",
+	].some((needle) => message.includes(needle));
+}

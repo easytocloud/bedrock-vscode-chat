@@ -24,7 +24,7 @@ import type {
 	ParsedModelInfo,
 } from "./types";
 import { loadExternalMetadataForModels, type ExternalModelMetadata } from "./externalModelMetadata";
-import { signMantleRequest } from "./awsAuth";
+import { isMissingCredentialsError, signMantleRequest } from "./awsAuth";
 import { isClaudeModelId, sendMantleMessage, supportsMantleMessagesApi } from "./mantleMessages";
 import {
 	buildEndpointUrl,
@@ -48,6 +48,8 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 	private _models: ParsedModelInfo[] | null = null;
 	/** Reason the most recent model discovery failed, if it did (read by the Test Connection button). */
 	lastDiscoveryError: string | undefined;
+	/** True when the most recent discovery failed only because AWS credentials aren't available yet (not signed in). */
+	discoveryNeedsSignIn = false;
 	private _mantleToolSupport = new Map<string, boolean>();
 	private _toolCallBuffers = new Map<number, BufferedToolCall>();
 	private _completedToolCallIndices = new Set<number>();
@@ -67,12 +69,6 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		return this.config.get<string>("modelMetadataSource", "none");
 	}
 
-	private externalMetadataUrl(): string {
-		return this.config.get<string>(
-			"modelMetadataUrl",
-			"https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-		);
-	}
 
 	private externalMetadataCacheHours(): number {
 		return this.config.get<number>("modelMetadataCacheHours", 24);
@@ -98,8 +94,7 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 
 		this._externalMetaByModelId = await loadExternalMetadataForModels({
 			memento: this.globalState,
-			cacheKey: "aws-bedrock.externalModelMetadata.v1",
-			url: this.externalMetadataUrl(),
+			cacheKey: "aws-bedrock.externalModelMetadata.modelsDev.v1",
 			cacheHours: this.externalMetadataCacheHours(),
 			region,
 			userAgent: this.userAgent,
@@ -115,20 +110,21 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 			return;
 		}
 
-		if (typeof meta.max_output_tokens === "number" && meta.max_output_tokens > 0) {
-			model.maxOutputTokens = meta.max_output_tokens;
+		if (meta.maxOutputTokens) {
+			model.maxOutputTokens = meta.maxOutputTokens;
 		}
-		if (typeof meta.max_input_tokens === "number" && meta.max_input_tokens > 0) {
-			model.maxInputTokens = meta.max_input_tokens;
-			model.contextLength = Math.max(model.contextLength, meta.max_input_tokens + (model.maxOutputTokens || 0));
+		if (meta.contextLength) {
+			model.contextLength = meta.contextLength;
+		}
+		if (meta.maxInputTokens) {
+			model.maxInputTokens = meta.maxInputTokens;
 		}
 
-		const tools = meta.supports_function_calling === true || meta.supports_tool_choice === true;
-		if (tools) {
+		if (meta.toolCalling === true) {
 			model.capabilities.supportsToolCalling = true;
 		}
 
-		if (meta.supports_vision === true) {
+		if (meta.vision === true) {
 			model.capabilities.supportsVision = true;
 		}
 	}
@@ -248,7 +244,12 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		this.logDebug(`Mantle provideLanguageModelChatInformation called, silent: ${options.silent}`);
 
 		this.lastDiscoveryError = undefined;
+		this.discoveryNeedsSignIn = false;
 		if (!this.isMantleEnabled()) {
+			if (!options.silent) {
+				// Picked under "Add Models" while disabled: open the panel so the user can enable it.
+				void vscode.commands.executeCommand("aws-bedrock.revealConfigView");
+			}
 			this._models = [];
 			return [];
 		}
@@ -273,8 +274,9 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 					"User-Agent": this.userAgent,
 				};
 			} else {
-				// Never prompt during discovery; prompt on first Mantle usage instead.
-				const apiKey = await this.ensureApiKey(true);
+				// Only prompt when the user explicitly asked for Mantle models (non-silent "Add Models");
+				// background discovery never prompts — first Mantle usage does instead.
+				const apiKey = await this.ensureApiKey(options.silent);
 				if (!apiKey) {
 					this.logDebug("Mantle enabled but no API key available");
 					this.lastDiscoveryError = "No Amazon Bedrock API key is stored. Use Set API Key first.";
@@ -339,8 +341,21 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 			const authDesc = authMethod === "awsCredentials" ? "AWS credentials" : "API key";
 			const message = error instanceof Error ? error.message : String(error);
 			this.lastDiscoveryError = message;
-			this.log("error", `Failed to fetch Mantle models using ${authDesc}: ${message}`);
-			if (!options.silent) {
+			if (authMethod === "awsCredentials" && isMissingCredentialsError(error)) {
+				// Expected when VS Code starts before the user has signed in (e.g. `aws sso login`):
+				// no toast, no error-level log. Refresh after signing in to load the models.
+				this.discoveryNeedsSignIn = true;
+				this.logAlways(
+					`Mantle model discovery skipped: AWS credentials not available yet. Sign in, then refresh models. (${message})`
+				);
+			} else {
+				this.log("error", `Failed to fetch Mantle models using ${authDesc}: ${message}`);
+			}
+			if (!options.silent && this.discoveryNeedsSignIn) {
+				vscode.window.showWarningMessage(
+					"Amazon Bedrock Mantle: not signed in to AWS. Sign in (e.g. `aws sso login`), then refresh models from the configuration panel."
+				);
+			} else if (!options.silent) {
 				vscode.window.showErrorMessage(`Failed to fetch Mantle models: ${message}`);
 			}
 		} finally {
@@ -366,6 +381,11 @@ export class MantleProvider implements vscode.LanguageModelChatProvider {
 		this._models = parsedModels;
 		const models = this._models.map((m) => this.toLanguageModelChatInformation(m));
 		this.logAlways(`Returning ${models.length} Mantle models to VSCode`);
+		if (!options.silent) {
+			// Non-silent resolution only happens when the user picks this provider under "Add Models";
+			// VS Code no longer runs managementCommand there, so open the configuration panel ourselves.
+			void vscode.commands.executeCommand("aws-bedrock.revealConfigView");
+		}
 		return models;
 	}
 
