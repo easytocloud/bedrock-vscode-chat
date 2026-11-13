@@ -5,7 +5,7 @@ All notable changes to the GitHub Copilot Chat Model Provider for Amazon Bedrock
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-11-13
 
 ### Changed
 - **External model metadata now comes from [models.dev](https://models.dev)** (via the official `@opencode-ai/models` client) instead of the litellm registry. Set `aws-bedrock.modelMetadataSource` to `models.dev` to use it. Context windows, output limits and tool/vision support are read from its Amazon Bedrock catalog, including cross-region inference profiles, and Mantle model IDs without a version suffix are matched as well. An existing `litellm` setting is migrated automatically. `aws-bedrock.modelMetadataUrl` has been removed.

@@ -110,7 +110,9 @@ Click the **Amazon Bedrock (Copilot Chat)** icon in the Activity Bar to open the
 
 ![The Amazon Bedrock (Copilot Chat) configuration drawer](https://raw.githubusercontent.com/easytocloud/bedrock-vscode-chat/main/images/screenshot.png)
 
-The same panel opens via the gear icon next to the model picker in the Copilot Chat panel, or via the `Show Configuration` command from the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`).
+The same panel opens when you pick **Amazon Bedrock** or **Amazon Bedrock Mantle** under **Add Models** in Copilot Chat's model management view, or via the `Show Configuration` command from the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`).
+
+If VS Code starts before you've signed in to AWS (for example, before `aws sso login`), the extension waits quietly instead of showing an error. Once you've signed in, refresh the models from the panel.
 
 ### 1. Native Amazon Bedrock (Converse API)
 
