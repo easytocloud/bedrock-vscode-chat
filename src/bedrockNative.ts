@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import type { ParsedModelInfo } from "./types";
 import { repairToolHistory } from "./toolHistory";
 import {
@@ -42,6 +43,28 @@ function buildUserAgentFragment(userAgent: string): string {
 	// AWS SDK expects customUserAgent to be a short string fragment.
 	// Keep it reasonably small.
 	return userAgent.slice(0, 80);
+}
+
+/**
+ * Bedrock Runtime client for Converse. The SDK defaults this client to an HTTP/2 handler,
+ * but VS Code's proxy support (the `http.proxy` setting, system/PAC proxies, `HTTPS_PROXY`)
+ * hooks Node's `http`/`https` modules, not `http2`. Behind a proxy, HTTP/2 requests
+ * therefore try to connect directly and fail (e.g. `getaddrinfo ENOTFOUND`), while
+ * `BedrockClient` (HTTP/1.1 by default) works (issue #8). Converse is a plain
+ * request/response call and we create a client per request, so HTTP/2 brings nothing here:
+ * use the HTTP/1.1 handler, like the control-plane client.
+ */
+export function createBedrockRuntimeClient(options: {
+	region: string;
+	awsProfile?: string;
+	userAgent: string;
+}): BedrockRuntimeClient {
+	return new BedrockRuntimeClient({
+		region: options.region,
+		credentials: getCredentials(options.awsProfile),
+		customUserAgent: buildUserAgentFragment(options.userAgent),
+		requestHandler: new NodeHttpHandler(),
+	});
 }
 
 type InferenceProfileResolution = {
@@ -613,12 +636,7 @@ async function converseOnceAttempt(options: {
 	toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }>;
 	reasoning?: string;
 }> {
-	const credentials = getCredentials(options.awsProfile);
-	const runtime = new BedrockRuntimeClient({
-		region: options.region,
-		credentials,
-		customUserAgent: buildUserAgentFragment(options.userAgent),
-	});
+	const runtime = createBedrockRuntimeClient(options);
 
 	// Prompt caching (cachePoint) is only supported by Anthropic Claude and Amazon Nova
 	// models on Amazon Bedrock today; other families (Llama, Mistral, DeepSeek, Qwen, ...) reject

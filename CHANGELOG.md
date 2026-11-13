@@ -5,6 +5,11 @@ All notable changes to the GitHub Copilot Chat Model Provider for Amazon Bedrock
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Native chat requests now work behind an HTTP(S) proxy ([#8](https://github.com/easytocloud/bedrock-vscode-chat/issues/8)). Model discovery already went through VS Code's proxy support, but the Converse call used HTTP/2, which bypasses it, and failed with `getaddrinfo ENOTFOUND`. It now uses HTTP/1.1, the same as discovery, so the `http.proxy` setting, system/PAC proxies and `HTTPS_PROXY` all apply. Thanks to HND-Hidetaka-Takano for the detailed diagnosis.
+
 ## [0.8.0] - 2026-11-13
 
 ### Changed
