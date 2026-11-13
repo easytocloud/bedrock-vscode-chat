@@ -199,6 +199,10 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		this.lastDiscoveryError = undefined;
 		this.discoveryNeedsSignIn = false;
 		if (!this.isNativeEnabled()) {
+			if (!options.silent) {
+				// Picked under "Add Models" while disabled: open the panel so the user can enable it.
+				this.revealConfigView();
+			}
 			this._models = [];
 			return [];
 		}
@@ -239,6 +243,13 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 				this.logAlways(
 					`native model discovery skipped: AWS credentials not available yet (profile=${this.awsProfile() ?? "default"}). Sign in, then refresh models. (${message})`
 				);
+				if (!options.silent) {
+					// The user explicitly asked for these models (Add Models), so tell them why there are none.
+					vscode.window.showWarningMessage(
+						`Amazon Bedrock: not signed in to AWS (profile "${this.awsProfile() ?? "default"}"). Sign in (e.g. \`aws sso login\`), then refresh models from the configuration panel.`
+					);
+					this.revealConfigView();
+				}
 				this._models = [];
 				return [];
 			}
@@ -280,7 +291,20 @@ export class NativeBedrockProvider implements vscode.LanguageModelChatProvider {
 		this._models = nativeModels;
 		const models = this._models.map((m) => this.toLanguageModelChatInformation(m));
 		this.logAlways(`Returning ${models.length} native Amazon Bedrock models to VSCode`);
+		if (!options.silent) {
+			this.revealConfigView();
+		}
 		return models;
+	}
+
+	/**
+	 * VS Code only resolves models non-silently when the user picks this provider under
+	 * "Add Models" in the Copilot Chat model management view. For providers declaring a
+	 * managementCommand, VS Code no longer runs that command there, so open the
+	 * configuration panel ourselves — otherwise picking the provider appears to do nothing.
+	 */
+	private revealConfigView(): void {
+		void vscode.commands.executeCommand("aws-bedrock.revealConfigView");
 	}
 
 	private toLanguageModelChatInformation(model: ParsedModelInfo): vscode.LanguageModelChatInformation {

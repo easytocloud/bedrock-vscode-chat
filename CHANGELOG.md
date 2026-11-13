@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - No error popup or "no chat models are available" warning at startup when VS Code opens before you have signed in to AWS (e.g. before `aws sso login`). Missing credentials are logged at info level; refresh models once signed in.
+- Picking **Amazon Bedrock** or **Amazon Bedrock Mantle** under *Add Models* in Copilot Chat's model management now does something. Recent VS Code versions no longer run the provider's management command there, so the extension opens its configuration panel itself. If Mantle uses API-key auth and no key is stored, you're asked for one. If you aren't signed in to AWS, you get a message saying so.
 
 ## [0.7.0] - 2026-10-27
 
