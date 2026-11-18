@@ -12,10 +12,21 @@ dist/**
 # Build / lint / test config and documentation not needed at runtime
 config/**
 docs/**
-*.map
+test/**
+out/test/**
+out/test.js
+**/*.map
 
 # Assets that aren't needed (SVG version is redundant with PNG)
 assets/icon.svg
+
+# Local environment / secrets references (direnv, dotenv) — never ship
+.envrc
+.env
+.env.*
+
+# Screenshot pipeline (README uses the hosted image)
+mockups/**
 
 # Misc
 .gitignore
